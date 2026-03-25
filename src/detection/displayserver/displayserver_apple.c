@@ -1,7 +1,7 @@
 #include "displayserver.h"
-#include "util/apple/cf_helpers.h"
-#include "util/stringUtils.h"
-#include "util/edidHelper.h"
+#include "common/apple/cf_helpers.h"
+#include "common/stringUtils.h"
+#include "common/edidHelper.h"
 #include "detection/os/os.h"
 
 #include <stdlib.h>
@@ -116,12 +116,14 @@ static void detectDisplays(FFDisplayServerResult* ds)
                 physicalHeight = (uint32_t) (size.height + 0.5);
             }
 
+            uint32_t pixelWidth = (uint32_t) CGDisplayModeGetPixelWidth(mode);
+            uint32_t pixelHeight = (uint32_t) CGDisplayModeGetPixelHeight(mode);
+
             FFDisplayResult* display = ffdsAppendDisplay(ds,
-                (uint32_t)CGDisplayModeGetPixelWidth(mode),
-                (uint32_t)CGDisplayModeGetPixelHeight(mode),
+                pixelWidth,
+                pixelHeight,
                 refreshRate,
-                (uint32_t)CGDisplayModeGetWidth(mode),
-                (uint32_t)CGDisplayModeGetHeight(mode),
+                pixelHeight * 96 / (uint32_t)CGDisplayModeGetHeight(mode),
                 preferredWidth,
                 preferredHeight,
                 preferredRefreshRate,

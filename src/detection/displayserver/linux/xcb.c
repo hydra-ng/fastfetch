@@ -4,111 +4,14 @@
 
 #include "common/library.h"
 #include "common/properties.h"
-#include "util/edidHelper.h"
-#include "util/mallocHelper.h"
-#include "util/stringUtils.h"
+#include "common/edidHelper.h"
+#include "common/mallocHelper.h"
+#include "common/stringUtils.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <xcb/randr.h>
 #include <xcb/xcb.h>
-
-typedef struct XcbPropertyData
-{
-    FF_LIBRARY_SYMBOL(xcb_intern_atom)
-    FF_LIBRARY_SYMBOL(xcb_intern_atom_reply)
-    FF_LIBRARY_SYMBOL(xcb_get_property)
-    FF_LIBRARY_SYMBOL(xcb_get_property_reply)
-    FF_LIBRARY_SYMBOL(xcb_get_property_value)
-    FF_LIBRARY_SYMBOL(xcb_get_property_value_length)
-    FF_LIBRARY_SYMBOL(xcb_get_atom_name)
-    FF_LIBRARY_SYMBOL(xcb_get_atom_name_name)
-    FF_LIBRARY_SYMBOL(xcb_get_atom_name_name_length)
-    FF_LIBRARY_SYMBOL(xcb_get_atom_name_reply)
-    FF_LIBRARY_SYMBOL(xcb_get_setup)
-    FF_LIBRARY_SYMBOL(xcb_setup_vendor)
-    FF_LIBRARY_SYMBOL(xcb_setup_vendor_length)
-} XcbPropertyData;
-
-static bool xcbInitPropertyData(FF_MAYBE_UNUSED void* libraryHandle, XcbPropertyData* propertyData)
-{
-    FF_LIBRARY_LOAD_SYMBOL_PTR(libraryHandle, propertyData, xcb_intern_atom, false)
-    FF_LIBRARY_LOAD_SYMBOL_PTR(libraryHandle, propertyData, xcb_intern_atom_reply, false)
-    FF_LIBRARY_LOAD_SYMBOL_PTR(libraryHandle, propertyData, xcb_get_property, false)
-    FF_LIBRARY_LOAD_SYMBOL_PTR(libraryHandle, propertyData, xcb_get_property_reply, false)
-    FF_LIBRARY_LOAD_SYMBOL_PTR(libraryHandle, propertyData, xcb_get_property_value, false)
-    FF_LIBRARY_LOAD_SYMBOL_PTR(libraryHandle, propertyData, xcb_get_property_value_length, false)
-    FF_LIBRARY_LOAD_SYMBOL_PTR(libraryHandle, propertyData, xcb_get_atom_name, false)
-    FF_LIBRARY_LOAD_SYMBOL_PTR(libraryHandle, propertyData, xcb_get_atom_name_name, false)
-    FF_LIBRARY_LOAD_SYMBOL_PTR(libraryHandle, propertyData, xcb_get_atom_name_name_length, false)
-    FF_LIBRARY_LOAD_SYMBOL_PTR(libraryHandle, propertyData, xcb_get_atom_name_reply, false)
-    FF_LIBRARY_LOAD_SYMBOL_PTR(libraryHandle, propertyData, xcb_get_setup, false)
-    FF_LIBRARY_LOAD_SYMBOL_PTR(libraryHandle, propertyData, xcb_setup_vendor, false)
-    FF_LIBRARY_LOAD_SYMBOL_PTR(libraryHandle, propertyData, xcb_setup_vendor_length, false)
-
-    return true;
-}
-
-static void* xcbGetProperty(XcbPropertyData* data, xcb_connection_t* connection, xcb_window_t window, const char* request)
-{
-    xcb_intern_atom_cookie_t requestAtomCookie = data->ffxcb_intern_atom(connection, true, (uint16_t) strlen(request), request);
-    FF_AUTO_FREE xcb_intern_atom_reply_t* requestAtomReply = data->ffxcb_intern_atom_reply(connection, requestAtomCookie, NULL);
-    if(requestAtomReply == NULL)
-        return NULL;
-
-    xcb_get_property_cookie_t propertyCookie = data->ffxcb_get_property(connection, false, window, requestAtomReply->atom, XCB_ATOM_ANY, 0, 8 * 1024);
-
-    FF_AUTO_FREE xcb_get_property_reply_t* propertyReply = data->ffxcb_get_property_reply(connection, propertyCookie, NULL);
-    if(propertyReply == NULL)
-        return NULL;
-
-    int length = data->ffxcb_get_property_value_length(propertyReply);
-    if(length <= 0)
-        return NULL;
-
-    //Why are xcb property strings not null terminated???
-    void* replyValue = malloc((size_t)length + 1);
-    memcpy(replyValue, data->ffxcb_get_property_value(propertyReply), (size_t) length);
-    ((char*) replyValue)[length] = '\0';
-
-    return replyValue;
-}
-
-static void xcbDetectWMfromEWMH(XcbPropertyData* data, xcb_connection_t* connection, xcb_window_t rootWindow, FFDisplayServerResult* result)
-{
-    if(result->wmProcessName.length > 0 || ffStrbufCompS(&result->wmProtocolName, FF_WM_PROTOCOL_WAYLAND) == 0)
-        return;
-
-    FF_AUTO_FREE xcb_window_t* wmWindow = (xcb_window_t*) xcbGetProperty(data, connection, rootWindow, "_NET_SUPPORTING_WM_CHECK");
-    if(wmWindow == NULL)
-        return;
-
-    FF_AUTO_FREE char* wmName = (char*) xcbGetProperty(data, connection, *wmWindow, "WM_NAME");
-    if(!ffStrSet(wmName))
-        wmName = (char*) xcbGetProperty(data, connection, *wmWindow, "_NET_WM_NAME");
-
-    if(!ffStrSet(wmName))
-        return;
-
-    ffStrbufSetS(&result->wmProcessName, wmName);
-}
-
-static void xcbFetchServerVendor(XcbPropertyData* data, xcb_connection_t* connection, FFDisplayServerResult* result)
-{
-    const xcb_setup_t* setup = data->ffxcb_get_setup(connection);
-
-    int length = data->ffxcb_setup_vendor_length(setup);
-    if(length <= 0)
-        return;
-
-    FF_STRBUF_AUTO_DESTROY serverVendor = ffStrbufCreateNS((uint32_t) length, data->ffxcb_setup_vendor(setup));
-
-    if (!ffStrbufEqualS(&serverVendor, "The X.Org Foundation")) // Original
-    {
-        ffStrbufDestroy(&result->wmProtocolName);
-        ffStrbufInitMove(&result->wmProtocolName, &serverVendor);
-    }
-}
 
 typedef struct XcbRandrData
 {
@@ -131,42 +34,132 @@ typedef struct XcbRandrData
     FF_LIBRARY_SYMBOL(xcb_randr_get_output_property_reply)
     FF_LIBRARY_SYMBOL(xcb_randr_get_output_property_data)
     FF_LIBRARY_SYMBOL(xcb_randr_get_output_property_data_length)
+
     FF_LIBRARY_SYMBOL(xcb_intern_atom)
     FF_LIBRARY_SYMBOL(xcb_intern_atom_reply)
+    FF_LIBRARY_SYMBOL(xcb_get_property)
+    FF_LIBRARY_SYMBOL(xcb_get_property_reply)
+    FF_LIBRARY_SYMBOL(xcb_get_property_value)
+    FF_LIBRARY_SYMBOL(xcb_get_property_value_length)
+    FF_LIBRARY_SYMBOL(xcb_get_atom_name)
+    FF_LIBRARY_SYMBOL(xcb_get_atom_name_name)
+    FF_LIBRARY_SYMBOL(xcb_get_atom_name_name_length)
+    FF_LIBRARY_SYMBOL(xcb_get_atom_name_reply)
+    FF_LIBRARY_SYMBOL(xcb_get_setup)
+    FF_LIBRARY_SYMBOL(xcb_setup_vendor)
+    FF_LIBRARY_SYMBOL(xcb_setup_vendor_length)
 
     //init once
     xcb_connection_t* connection;
     FFDisplayServerResult* result;
-    XcbPropertyData propData;
 } XcbRandrData;
 
-static bool xcbRandrHandleOutput(XcbRandrData* data, xcb_randr_output_t output, FFstrbuf* name, bool primary, FFDisplayType displayType, struct xcb_randr_get_screen_resources_current_reply_t* screenResources, uint8_t bitDepth, double scaleFactor)
+static void* xcbGetProperty(XcbRandrData* data, xcb_window_t window, const char* request)
+{
+    xcb_intern_atom_cookie_t requestAtomCookie = data->ffxcb_intern_atom(data->connection, true, (uint16_t) strlen(request), request);
+    FF_AUTO_FREE xcb_intern_atom_reply_t* requestAtomReply = data->ffxcb_intern_atom_reply(data->connection, requestAtomCookie, NULL);
+    if(requestAtomReply == NULL)
+        return NULL;
+
+    xcb_get_property_cookie_t propertyCookie = data->ffxcb_get_property(data->connection, false, window, requestAtomReply->atom, XCB_ATOM_ANY, 0, 8 * 1024);
+    FF_AUTO_FREE xcb_get_property_reply_t* propertyReply = data->ffxcb_get_property_reply(data->connection, propertyCookie, NULL);
+    if(propertyReply == NULL)
+        return NULL;
+
+    int length = data->ffxcb_get_property_value_length(propertyReply);
+    if(length <= 0)
+        return NULL;
+
+    //Why are xcb property strings not null terminated???
+    void* replyValue = malloc((size_t)length + 1);
+    memcpy(replyValue, data->ffxcb_get_property_value(propertyReply), (size_t) length);
+    ((char*) replyValue)[length] = '\0';
+
+    return replyValue;
+}
+
+static xcb_randr_get_output_property_reply_t* xcbRandrGetProperty(XcbRandrData* data, xcb_randr_output_t output, const char* name)
+{
+    xcb_intern_atom_cookie_t requestAtomCookie = data->ffxcb_intern_atom(data->connection, true, (uint16_t) strlen(name), name);
+    FF_AUTO_FREE xcb_intern_atom_reply_t* requestAtomReply = data->ffxcb_intern_atom_reply(data->connection, requestAtomCookie, NULL);
+
+    if(requestAtomReply)
+    {
+        xcb_randr_get_output_property_cookie_t outputPropertyCookie = data->ffxcb_randr_get_output_property(data->connection, output, requestAtomReply->atom, XCB_GET_PROPERTY_TYPE_ANY, 0, 100, false, false);
+        return data->ffxcb_randr_get_output_property_reply(data->connection, outputPropertyCookie, NULL);
+    }
+    return NULL;
+}
+
+static void xcbDetectWMfromEWMH(XcbRandrData* data, xcb_window_t rootWindow, FFDisplayServerResult* result)
+{
+    if(result->wmProcessName.length > 0 || ffStrbufEqualS(&result->wmProtocolName, FF_WM_PROTOCOL_WAYLAND))
+        return;
+
+    FF_AUTO_FREE xcb_window_t* wmWindow = (xcb_window_t*) xcbGetProperty(data, rootWindow, "_NET_SUPPORTING_WM_CHECK");
+    if(wmWindow == NULL)
+        return;
+
+    FF_AUTO_FREE char* wmName = (char*) xcbGetProperty(data, *wmWindow, "WM_NAME");
+    if(!ffStrSet(wmName))
+        wmName = (char*) xcbGetProperty(data, *wmWindow, "_NET_WM_NAME");
+
+    if(!ffStrSet(wmName))
+        return;
+
+    ffStrbufSetS(&result->wmProcessName, wmName);
+}
+
+static void xcbFetchServerVendor(XcbRandrData* data, FFDisplayServerResult* result)
+{
+    const xcb_setup_t* setup = data->ffxcb_get_setup(data->connection);
+
+    int length = data->ffxcb_setup_vendor_length(setup);
+    if(length <= 0)
+        return;
+
+    FF_STRBUF_AUTO_DESTROY serverVendor = ffStrbufCreateNS((uint32_t) length, data->ffxcb_setup_vendor(setup));
+
+    if (!ffStrbufEqualS(&serverVendor, "The X.Org Foundation")) // Original
+    {
+        ffStrbufDestroy(&result->wmProtocolName);
+        ffStrbufInitMove(&result->wmProtocolName, &serverVendor);
+    }
+}
+
+static bool xcbRandrHandleOutput(XcbRandrData* data, xcb_randr_output_t output, FFstrbuf* name, bool primary, FFDisplayType displayType, struct xcb_randr_get_screen_resources_current_reply_t* screenResources, uint8_t bitDepth, uint32_t dpi)
 {
     xcb_randr_get_output_info_cookie_t outputInfoCookie = data->ffxcb_randr_get_output_info(data->connection, output, XCB_CURRENT_TIME);
     FF_AUTO_FREE xcb_randr_get_output_info_reply_t* outputInfoReply = data->ffxcb_randr_get_output_info_reply(data->connection, outputInfoCookie, NULL);
     if(outputInfoReply == NULL)
         return false;
 
-    xcb_intern_atom_cookie_t requestAtomCookie = data->ffxcb_intern_atom(data->connection, true, (uint16_t) strlen("EDID"), "EDID");
-    FF_AUTO_FREE xcb_intern_atom_reply_t* requestAtomReply = data->ffxcb_intern_atom_reply(data->connection, requestAtomCookie, NULL);
-    FF_AUTO_FREE xcb_randr_get_output_property_reply_t* outputPropertyReply = NULL;
+    FF_AUTO_FREE xcb_randr_get_output_property_reply_t* edidReply = xcbRandrGetProperty(data, output, "EDID");
     uint8_t* edidData = NULL;
     uint32_t edidLength = 0;
-    if(requestAtomReply)
+    if(edidReply)
     {
-        xcb_randr_get_output_property_cookie_t outputPropertyCookie = data->ffxcb_randr_get_output_property(data->connection, output, requestAtomReply->atom, XCB_GET_PROPERTY_TYPE_ANY, 0, 100, false, false);
-        outputPropertyReply = data->ffxcb_randr_get_output_property_reply(data->connection, outputPropertyCookie, NULL);
-        if(outputPropertyReply)
+        int len = data->ffxcb_randr_get_output_property_data_length(edidReply);
+        if(len >= 128)
         {
-            int len = data->ffxcb_randr_get_output_property_data_length(outputPropertyReply);
-            if(len >= 128)
-            {
-                ffStrbufClear(name);
-                edidData = data->ffxcb_randr_get_output_property_data(outputPropertyReply);
-                ffEdidGetName(edidData, name);
-                edidLength = (uint32_t) len;
-            }
+            edidData = data->ffxcb_randr_get_output_property_data(edidReply);
+            edidLength = (uint32_t) len;
         }
+    }
+
+    if(edidData)
+    {
+        ffStrbufClear(name);
+        ffEdidGetName(edidData, name);
+    }
+
+    bool randrEmulation = false;
+    FF_AUTO_FREE xcb_randr_get_output_property_reply_t* randrEmulationReply = xcbRandrGetProperty(data, output, "RANDR Emulation");
+    if(randrEmulationReply)
+    {
+        int len = data->ffxcb_randr_get_output_property_data_length(randrEmulationReply);
+        if(len >= 1)
+            randrEmulation = !!data->ffxcb_randr_get_output_property_data(randrEmulationReply)[0];
     }
 
     xcb_randr_get_crtc_info_cookie_t crtcInfoCookie = data->ffxcb_randr_get_crtc_info(data->connection, outputInfoReply->crtc, XCB_CURRENT_TIME);
@@ -218,8 +211,7 @@ static bool xcbRandrHandleOutput(XcbRandrData* data, xcb_randr_output_t output, 
         (uint32_t) (currentMode ? currentMode->width : crtcInfoReply->width),
         (uint32_t) (currentMode ? currentMode->height : crtcInfoReply->height),
         currentMode ? (double) currentMode->dot_clock / (double) ((uint32_t) currentMode->htotal * currentMode->vtotal) : 0,
-        (uint32_t) (crtcInfoReply->width / scaleFactor + .5),
-        (uint32_t) (crtcInfoReply->height / scaleFactor + .5),
+        dpi,
         preferredMode ? (uint32_t) preferredMode->width : 0,
         preferredMode ? (uint32_t) preferredMode->height : 0,
         preferredMode ? (double) preferredMode->dot_clock / (double) ((uint32_t) preferredMode->htotal * preferredMode->vtotal) : 0,
@@ -230,19 +222,32 @@ static bool xcbRandrHandleOutput(XcbRandrData* data, xcb_randr_output_t output, 
         0,
         (uint32_t) outputInfoReply->mm_width,
         (uint32_t) outputInfoReply->mm_height,
-        currentMode ? "xcb-randr-mode" : "xcb-randr-crtc"
+        randrEmulation
+            ? (currentMode ? "xcb-randr-emu-mode" : "xcb-randr-emu-crtc")
+            : (currentMode ? "xcb-randr-mode" : "xcb-randr-crtc")
+
     );
-    if (item && edidLength)
+    if (item)
     {
-        item->hdrStatus = ffEdidGetHdrCompatible(edidData, (uint32_t) edidLength) ? FF_DISPLAY_HDR_STATUS_SUPPORTED : FF_DISPLAY_HDR_STATUS_UNSUPPORTED;
-        ffEdidGetSerialAndManufactureDate(edidData, &item->serial, &item->manufactureYear, &item->manufactureWeek);
+        if (edidData && edidLength >= 128)
+        {
+            item->hdrStatus = ffEdidGetHdrCompatible(edidData, (uint32_t) edidLength) ? FF_DISPLAY_HDR_STATUS_SUPPORTED : FF_DISPLAY_HDR_STATUS_UNSUPPORTED;
+            ffEdidGetSerialAndManufactureDate(edidData, &item->serial, &item->manufactureYear, &item->manufactureWeek);
+        }
         item->bitDepth = bitDepth;
+        if ((rotation == 90 || rotation == 180) && !randrEmulation)
+        {
+            // In XWayland mode, width / height has been swapped out of box
+            uint32_t tmp = item->width;
+            item->width = item->height;
+            item->height = tmp;
+        }
     }
 
     return !!item;
 }
 
-static bool xcbRandrHandleMonitor(XcbRandrData* data, xcb_randr_monitor_info_t* monitor, struct xcb_randr_get_screen_resources_current_reply_t* screenResources, uint8_t bitDepth, double scaleFactor)
+static bool xcbRandrHandleMonitor(XcbRandrData* data, xcb_randr_monitor_info_t* monitor, struct xcb_randr_get_screen_resources_current_reply_t* screenResources, uint8_t bitDepth, uint32_t dpi)
 {
     //for some reasons, we have to construct this our self
     xcb_randr_output_iterator_t outputIterator = {
@@ -251,14 +256,14 @@ static bool xcbRandrHandleMonitor(XcbRandrData* data, xcb_randr_monitor_info_t* 
         .rem = data->ffxcb_randr_monitor_info_outputs_length(monitor)
     };
 
-    FF_AUTO_FREE xcb_get_atom_name_reply_t* nameReply = data->propData.ffxcb_get_atom_name_reply(
+    FF_AUTO_FREE xcb_get_atom_name_reply_t* nameReply = data->ffxcb_get_atom_name_reply(
         data->connection,
-        data->propData.ffxcb_get_atom_name(data->connection, monitor->name),
+        data->ffxcb_get_atom_name(data->connection, monitor->name),
         NULL
     );
     FF_STRBUF_AUTO_DESTROY name = ffStrbufCreateNS(
-        (uint32_t) data->propData.ffxcb_get_atom_name_name_length(nameReply),
-        data->propData.ffxcb_get_atom_name_name(nameReply)
+        (uint32_t) data->ffxcb_get_atom_name_name_length(nameReply),
+        data->ffxcb_get_atom_name_name(nameReply)
     );
     const FFDisplayType displayType = ffdsGetDisplayType(name.chars);
 
@@ -266,7 +271,7 @@ static bool xcbRandrHandleMonitor(XcbRandrData* data, xcb_randr_monitor_info_t* 
 
     while(outputIterator.rem > 0)
     {
-        if(xcbRandrHandleOutput(data, *outputIterator.data, &name, monitor->primary, displayType, screenResources, bitDepth, scaleFactor))
+        if(xcbRandrHandleOutput(data, *outputIterator.data, &name, monitor->primary, displayType, screenResources, bitDepth, dpi))
             foundOutput = true;
         data->ffxcb_randr_output_next(&outputIterator);
     }
@@ -278,8 +283,7 @@ static bool xcbRandrHandleMonitor(XcbRandrData* data, xcb_randr_monitor_info_t* 
         (uint32_t) monitor->width,
         (uint32_t) monitor->height,
         0,
-        (uint32_t) (monitor->width / scaleFactor + .5),
-        (uint32_t) (monitor->height / scaleFactor + .5),
+        dpi,
         0, 0, 0,
         0,
         &name,
@@ -305,13 +309,13 @@ static bool xcbRandrHandleMonitors(XcbRandrData* data, xcb_screen_t* screen)
     xcb_randr_get_screen_resources_current_cookie_t screenResourcesCookie = data->ffxcb_randr_get_screen_resources_current(data->connection, screen->root);
     FF_AUTO_FREE struct xcb_randr_get_screen_resources_current_reply_t* screenResources = data->ffxcb_randr_get_screen_resources_current_reply(data->connection, screenResourcesCookie, NULL);
 
-    double scaleFactor = 1;
-    FF_AUTO_FREE const char* resourceManager = xcbGetProperty(&data->propData, data->connection, screen->root, "RESOURCE_MANAGER");
+    uint32_t dpi = 0;
+    FF_AUTO_FREE const char* resourceManager = xcbGetProperty(data, screen->root, "RESOURCE_MANAGER");
     if (resourceManager)
     {
-        FF_STRBUF_AUTO_DESTROY dpi = ffStrbufCreate();
-        if (ffParsePropLines(resourceManager, "Xft.dpi:", &dpi))
-            scaleFactor = ffStrbufToDouble(&dpi, 96) / 96;
+        FF_STRBUF_AUTO_DESTROY dpiStr = ffStrbufCreate();
+        if (ffParsePropLines(resourceManager, "Xft.dpi:", &dpiStr))
+            dpi = (uint32_t) ffStrbufToUInt(&dpiStr, 96);
     }
     uint8_t bitDepth = (uint8_t) (screen->root_depth / 3);
 
@@ -321,7 +325,7 @@ static bool xcbRandrHandleMonitors(XcbRandrData* data, xcb_screen_t* screen)
 
     while(monitorInfoIterator.rem > 0)
     {
-        if(xcbRandrHandleMonitor(data, monitorInfoIterator.data, screenResources, bitDepth, scaleFactor))
+        if(xcbRandrHandleMonitor(data, monitorInfoIterator.data, screenResources, bitDepth, dpi))
             foundMonitor = true;
         data->ffxcb_randr_monitor_info_next(&monitorInfoIterator);
     }
@@ -341,8 +345,7 @@ static void xcbRandrHandleScreen(XcbRandrData* data, xcb_screen_t* screen)
         (uint32_t) screen->width_in_pixels,
         (uint32_t) screen->height_in_pixels,
         0,
-        (uint32_t) screen->width_in_pixels,
-        (uint32_t) screen->height_in_pixels,
+        0,
         0, 0, 0,
         0,
         NULL,
@@ -357,7 +360,7 @@ static void xcbRandrHandleScreen(XcbRandrData* data, xcb_screen_t* screen)
 
 const char* ffdsConnectXcbRandr(FFDisplayServerResult* result)
 {
-    FF_LIBRARY_LOAD(xcbRandr, "dlopen libxcb-randr failed", "libxcb-randr" FF_LIBRARY_EXTENSION, 1)
+    FF_LIBRARY_LOAD_MESSAGE(xcbRandr, "libxcb-randr" FF_LIBRARY_EXTENSION, 1)
     FF_LIBRARY_LOAD_SYMBOL_MESSAGE(xcbRandr, xcb_connect)
     FF_LIBRARY_LOAD_SYMBOL_MESSAGE(xcbRandr, xcb_connection_has_error)
     FF_LIBRARY_LOAD_SYMBOL_MESSAGE(xcbRandr, xcb_get_setup)
@@ -369,6 +372,18 @@ const char* ffdsConnectXcbRandr(FFDisplayServerResult* result)
 
     FF_LIBRARY_LOAD_SYMBOL_VAR_MESSAGE(xcbRandr, data, xcb_intern_atom)
     FF_LIBRARY_LOAD_SYMBOL_VAR_MESSAGE(xcbRandr, data, xcb_intern_atom_reply)
+    FF_LIBRARY_LOAD_SYMBOL_VAR_MESSAGE(xcbRandr, data, xcb_get_property)
+    FF_LIBRARY_LOAD_SYMBOL_VAR_MESSAGE(xcbRandr, data, xcb_get_property_reply)
+    FF_LIBRARY_LOAD_SYMBOL_VAR_MESSAGE(xcbRandr, data, xcb_get_property_value)
+    FF_LIBRARY_LOAD_SYMBOL_VAR_MESSAGE(xcbRandr, data, xcb_get_property_value_length)
+    FF_LIBRARY_LOAD_SYMBOL_VAR_MESSAGE(xcbRandr, data, xcb_get_atom_name)
+    FF_LIBRARY_LOAD_SYMBOL_VAR_MESSAGE(xcbRandr, data, xcb_get_atom_name_name)
+    FF_LIBRARY_LOAD_SYMBOL_VAR_MESSAGE(xcbRandr, data, xcb_get_atom_name_name_length)
+    FF_LIBRARY_LOAD_SYMBOL_VAR_MESSAGE(xcbRandr, data, xcb_get_atom_name_reply)
+    FF_LIBRARY_LOAD_SYMBOL_VAR_MESSAGE(xcbRandr, data, xcb_get_setup)
+    FF_LIBRARY_LOAD_SYMBOL_VAR_MESSAGE(xcbRandr, data, xcb_setup_vendor)
+    FF_LIBRARY_LOAD_SYMBOL_VAR_MESSAGE(xcbRandr, data, xcb_setup_vendor_length)
+
     FF_LIBRARY_LOAD_SYMBOL_VAR_MESSAGE(xcbRandr, data, xcb_randr_get_screen_resources_current)
     FF_LIBRARY_LOAD_SYMBOL_VAR_MESSAGE(xcbRandr, data, xcb_randr_get_screen_resources_current_reply)
     FF_LIBRARY_LOAD_SYMBOL_VAR_MESSAGE(xcbRandr, data, xcb_randr_get_screen_resources_current_modes_iterator)
@@ -389,8 +404,6 @@ const char* ffdsConnectXcbRandr(FFDisplayServerResult* result)
     FF_LIBRARY_LOAD_SYMBOL_VAR_MESSAGE(xcbRandr, data, xcb_randr_get_crtc_info)
     FF_LIBRARY_LOAD_SYMBOL_VAR_MESSAGE(xcbRandr, data, xcb_randr_get_crtc_info_reply)
 
-    bool propertyDataInitialized = xcbInitPropertyData(xcbRandr, &data.propData);
-
 
     data.connection = ffxcb_connect(NULL, NULL);
     if(ffxcb_connection_has_error(data.connection) > 0)
@@ -405,9 +418,9 @@ const char* ffdsConnectXcbRandr(FFDisplayServerResult* result)
     xcb_screen_iterator_t iterator = ffxcb_setup_roots_iterator(ffxcb_get_setup(data.connection));
 
 
-    if(iterator.rem > 0 && propertyDataInitialized) {
-        xcbDetectWMfromEWMH(&data.propData, data.connection, iterator.data->root, result);
-        xcbFetchServerVendor(&data.propData, data.connection, result);
+    if(iterator.rem > 0) {
+        xcbDetectWMfromEWMH(&data, iterator.data->root, result);
+        xcbFetchServerVendor(&data, result);
     }
 
 

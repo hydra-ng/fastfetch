@@ -1,41 +1,22 @@
 #include "bios.h"
-#include "util/smbiosHelper.h"
+#include "common/smbiosHelper.h"
 
 #ifdef _WIN32
-#include "util/windows/registry.h"
+#include "common/windows/registry.h"
 
 #include <ntstatus.h>
-#include <winternl.h>
-
-typedef struct _SYSTEM_BOOT_ENVIRONMENT_INFORMATION
-{
-    GUID BootIdentifier;
-    FIRMWARE_TYPE FirmwareType;
-    union
-    {
-        ULONGLONG BootFlags;
-        struct
-        {
-            ULONGLONG DbgMenuOsSelection : 1; // REDSTONE4
-            ULONGLONG DbgHiberBoot : 1;
-            ULONGLONG DbgSoftBoot : 1;
-            ULONGLONG DbgMeasuredLaunch : 1;
-            ULONGLONG DbgMeasuredLaunchCapable : 1; // 19H1
-            ULONGLONG DbgSystemHiveReplace : 1;
-            ULONGLONG DbgMeasuredLaunchSmmProtections : 1;
-            ULONGLONG DbgMeasuredLaunchSmmLevel : 7; // 20H1
-        };
-    };
-} SYSTEM_BOOT_ENVIRONMENT_INFORMATION;
+#include "common/windows/nt.h"
 #elif __OpenBSD__
-#include "common/io/io.h"
+#include "common/io.h"
 
 #include <fcntl.h>
 #include <unistd.h>
-
 #elif __sun
 #include <libdevinfo.h>
 #include <sys/sunddi.h>
+#elif __APPLE__
+#include "common/apple/cf_helpers.h"
+#include <IOKit/IOKitLib.h>
 #endif
 
 typedef struct FFSmbiosBios
@@ -90,7 +71,7 @@ const char* ffDetectBios(FFBiosResult* bios)
     // Same as GetFirmwareType, but support (?) Windows 7
     // https://ntdoc.m417z.com/system_information_class
     SYSTEM_BOOT_ENVIRONMENT_INFORMATION sbei;
-    if (NT_SUCCESS(NtQuerySystemInformation(90 /*SystemBootEnvironmentInformation*/, &sbei, sizeof(sbei), NULL)))
+    if (NT_SUCCESS(NtQuerySystemInformation(SystemBootEnvironmentInformation, &sbei, sizeof(sbei), NULL)))
     {
         switch (sbei.FirmwareType)
         {
@@ -111,8 +92,12 @@ const char* ffDetectBios(FFBiosResult* bios)
     }
     di_fini(rootNode);
     #elif __HAIKU__ || __OpenBSD__
-    // Currently SMBIOS detection is supported in legancy BIOS only
+    // Currently SMBIOS detection is supported in legacy BIOS only
     ffStrbufSetStatic(&bios->type, "BIOS");
+    #elif __APPLE__
+    // Intel Macs use UEFI from day one
+    FF_IOOBJECT_AUTO_RELEASE io_registry_entry_t deviceEfi = IORegistryEntryFromPath(MACH_PORT_NULL, "IODeviceTree:/efi");
+    ffStrbufSetStatic(&bios->type, deviceEfi ? "UEFI" : "BIOS");
     #endif
 
     return NULL;

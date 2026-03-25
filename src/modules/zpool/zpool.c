@@ -2,10 +2,10 @@
 #include "common/jsonconfig.h"
 #include "common/percent.h"
 #include "common/size.h"
+#include "common/FFstrbuf.h"
+#include "common/stringUtils.h"
 #include "detection/zpool/zpool.h"
 #include "modules/zpool/zpool.h"
-#include "util/FFstrbuf.h"
-#include "util/stringUtils.h"
 
 static void printZpool(FFZpoolOptions* options, FFZpoolResult* result, uint8_t index)
 {
@@ -21,10 +21,10 @@ static void printZpool(FFZpoolOptions* options, FFZpoolResult* result, uint8_t i
     {
         ffStrbufClear(&buffer);
         FF_PARSE_FORMAT_STRING_CHECKED(&buffer, &options->moduleArgs.key, ((FFformatarg[]) {
-            FF_FORMAT_ARG(index, "index"),
-            FF_FORMAT_ARG(result->name, "name"),
-            FF_FORMAT_ARG(result->guid, "guid"),
-            FF_FORMAT_ARG(options->moduleArgs.keyIcon, "icon"),
+            FF_ARG(index, "index"),
+            FF_ARG(result->name, "name"),
+            FF_ARG(result->guid, "guid"),
+            FF_ARG(options->moduleArgs.keyIcon, "icon"),
         }));
     }
 
@@ -81,19 +81,19 @@ static void printZpool(FFZpoolOptions* options, FFZpoolResult* result, uint8_t i
             ffPercentAppendBar(&fragPercentageBar, result->fragmentation, options->percent, &options->moduleArgs);
 
         FF_PRINT_FORMAT_CHECKED(buffer.chars, 0, &options->moduleArgs, FF_PRINT_TYPE_NO_CUSTOM_KEY, ((FFformatarg[]) {
-            FF_FORMAT_ARG(result->name, "name"),
-            FF_FORMAT_ARG(result->guid, "guid"),
-            FF_FORMAT_ARG(result->state, "state"),
-            FF_FORMAT_ARG(usedPretty, "size-used"),
-            FF_FORMAT_ARG(allocatedPretty, "size-allocated"),
-            FF_FORMAT_ARG(totalPretty, "size-total"),
-            FF_FORMAT_ARG(usedPercentageNum, "used-percentage"),
-            FF_FORMAT_ARG(allocatedPercentageNum, "allocated-percentage"),
-            FF_FORMAT_ARG(fragPercentageNum, "frag-percentage"),
-            FF_FORMAT_ARG(usedPercentageBar, "used-percentage-bar"),
-            FF_FORMAT_ARG(allocatedPercentageBar, "allocated-percentage-bar"),
-            FF_FORMAT_ARG(fragPercentageBar, "frag-percentage-bar"),
-            FF_FORMAT_ARG(result->readOnly, "is-readonly"),
+            FF_ARG(result->name, "name"),
+            FF_ARG(result->guid, "guid"),
+            FF_ARG(result->state, "state"),
+            FF_ARG(usedPretty, "size-used"),
+            FF_ARG(allocatedPretty, "size-allocated"),
+            FF_ARG(totalPretty, "size-total"),
+            FF_ARG(usedPercentageNum, "used-percentage"),
+            FF_ARG(allocatedPercentageNum, "allocated-percentage"),
+            FF_ARG(fragPercentageNum, "frag-percentage"),
+            FF_ARG(usedPercentageBar, "used-percentage-bar"),
+            FF_ARG(allocatedPercentageBar, "allocated-percentage-bar"),
+            FF_ARG(fragPercentageBar, "frag-percentage-bar"),
+            FF_ARG(result->readOnly, "is-readonly"),
         }));
     }
 }
@@ -223,5 +223,6 @@ FFModuleBaseInfo ffZpoolModuleInfo = {
         {"Size used percentage bar", "used-percentage-bar"},
         {"Size allocated percentage bar", "allocated-percentage-bar"},
         {"Fragmentation percentage bar", "fragmentation-percentage-bar"},
+        {"Is read-only", "is-readonly"},
     }))
 };

@@ -2,10 +2,15 @@
 
 #if FF_HAVE_LIBZFS
 
-#include "util/kmod.h"
+#include "common/kmod.h"
 
 #ifdef __sun
 #include <libzfs.h>
+    #ifndef __illumos__
+    // On Solaris 11, zpool_get_prop has only 5 arguments. #2173
+    #define ffzpool_get_prop(zhp, prop, buf, len, srctype, literal) \
+        ffzpool_get_prop(zhp, prop, buf, len, srctype)
+    #endif
 #else
 #include "libzfs_simplified.h"
 #endif
@@ -72,7 +77,7 @@ static int enumZpoolCallback(zpool_handle_t* zpool, void* param)
 
 const char* ffDetectZpool(FFlist* result /* list of FFZpoolResult */)
 {
-    FF_LIBRARY_LOAD(libzfs, "dlopen libzfs" FF_LIBRARY_EXTENSION " failed", "libzfs" FF_LIBRARY_EXTENSION, 6);
+    FF_LIBRARY_LOAD_MESSAGE(libzfs, "libzfs" FF_LIBRARY_EXTENSION, 6);
     FF_LIBRARY_LOAD_SYMBOL_MESSAGE(libzfs, libzfs_init);
 
     libzfs_handle_t* handle = fflibzfs_init();

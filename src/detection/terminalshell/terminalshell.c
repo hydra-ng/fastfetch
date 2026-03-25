@@ -1,10 +1,10 @@
 #include "fastfetch.h"
-#include "common/io/io.h"
+#include "common/io.h"
 #include "common/processing.h"
 #include "common/properties.h"
-#include "util/path.h"
-#include "util/stringUtils.h"
-#include "util/binary.h"
+#include "common/path.h"
+#include "common/stringUtils.h"
+#include "common/binary.h"
 
 #include <ctype.h>
 #include <stdint.h>
@@ -19,21 +19,19 @@
     #define _PATH_LOCALBASE "/usr/pkg"
 #elif _WIN32
 
-#include "util/windows/version.h"
+#include "common/windows/version.h"
 #include <windows.h>
 
 static bool getFileVersion(const FFstrbuf* exePath, const wchar_t* stringName, FFstrbuf* version)
 {
     wchar_t exePathW[PATH_MAX + 1];
-    int len = MultiByteToWideChar(CP_UTF8, 0, exePath->chars, (int)exePath->length, exePathW, ARRAY_SIZE(exePathW));
-    if (len <= 0) return false;
-    assert(len < (int) ARRAY_SIZE(exePathW));
-    exePathW[len] = L'\0';
+    if (!NT_SUCCESS(RtlUTF8ToUnicodeN(exePathW, (ULONG) sizeof(exePathW), NULL, exePath->chars, (ULONG)exePath->length + 1)))
+        return false;
     return ffGetFileVersion(exePathW, stringName, version);
 }
 
 #elif __HAIKU__
-    #include "util/haiku/version.h"
+    #include "common/haiku/version.h"
 #endif
 
 static bool getExeVersionRaw(FFstrbuf* exe, FFstrbuf* version)
@@ -204,13 +202,14 @@ static bool getShellVersionAsh(FFstrbuf* exe, FFstrbuf* version)
     return true;
 }
 
-static bool getShellVersionXonsh(FFstrbuf* exe, FFstrbuf* version)
+static bool getShellVersionXonsh(FF_MAYBE_UNUSED FFstrbuf* exe, FFstrbuf* version)
 {
     ffStrbufSetS(version, getenv("XONSH_VERSION"));
     if (version->length) return true;
 
+    // exe is python here
     if(ffProcessAppendStdErr(version, (char* const[]) {
-        exe->chars,
+        "xonsh",
         "--version",
         NULL
     }) != NULL)
@@ -874,6 +873,9 @@ bool fftsGetTerminalVersion(FFstrbuf* processName, FF_MAYBE_UNUSED FFstrbuf* exe
 
     if(ffStrbufIgnCaseEqualS(processName, "termite"))
         return getTerminalVersionTermite(exe, version);
+
+    if(ffStrbufIgnCaseEqualS(processName, "cosmic-term"))
+        return getTerminalVersionTmux(exe, version);
 
     #endif
 

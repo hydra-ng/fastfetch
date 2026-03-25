@@ -1,8 +1,8 @@
 #include "common/printing.h"
 #include "common/jsonconfig.h"
+#include "common/stringUtils.h"
 #include "detection/weather/weather.h"
 #include "modules/weather/weather.h"
-#include "util/stringUtils.h"
 
 bool ffPrintWeather(FFWeatherOptions* options)
 {
@@ -23,7 +23,7 @@ bool ffPrintWeather(FFWeatherOptions* options)
     else
     {
         FF_PRINT_FORMAT_CHECKED(FF_WEATHER_MODULE_NAME, 0, &options->moduleArgs, FF_PRINT_TYPE_DEFAULT, ((FFformatarg[]) {
-            FF_FORMAT_ARG(result, "result"),
+            FF_ARG(result, "result"),
         }));
     }
 

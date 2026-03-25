@@ -1,9 +1,9 @@
 #include "os.h"
 #include "common/properties.h"
 #include "common/parsing.h"
-#include "common/io/io.h"
+#include "common/io.h"
 #include "common/processing.h"
-#include "util/stringUtils.h"
+#include "common/stringUtils.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -269,6 +269,15 @@ FF_MAYBE_UNUSED static bool detectDebianDerived(FFOSResult* result)
         ffStrbufSetStatic(&result->prettyName, "TrueNAS Scale");
         return true;
     }
+    else if (ffPathExists("/usr/bin/emmabuntus_config.sh", FF_PATHTYPE_FILE))
+    {
+        // Emmabuntüs
+        ffStrbufSetStatic(&result->id, "emmabuntus");
+        ffStrbufSetStatic(&result->idLike, "debian");
+        ffStrbufSetStatic(&result->name, "Emmabuntüs");
+        getDebianVersion(result);
+        return true;
+    }
     else
     {
         // Hack for MX Linux. See #847
@@ -313,21 +322,7 @@ static bool detectBedrock(FFOSResult* os)
 {
     const char* bedrockRestrict = getenv("BEDROCK_RESTRICT");
     if(bedrockRestrict && bedrockRestrict[0] == '1') return false;
-    if(parseOsRelease(FASTFETCH_TARGET_DIR_ROOT "/bedrock" FASTFETCH_TARGET_DIR_ETC "/bedrock-release", os))
-    {
-        if(os->id.length == 0)
-            ffStrbufAppendS(&os->id, "bedrock");
-
-        if(os->name.length == 0)
-            ffStrbufAppendS(&os->name, "Bedrock");
-
-        if(os->prettyName.length == 0)
-            ffStrbufAppendS(&os->prettyName, "Bedrock Linux");
-
-        parseOsRelease("/bedrock" FASTFETCH_TARGET_DIR_ETC "/os-release", os);
-        return true;
-    }
-    return false;
+    return parseOsRelease(FASTFETCH_TARGET_DIR_ROOT "/bedrock/strata/bedrock/etc/os-release", os);
 }
 
 static void detectOS(FFOSResult* os)

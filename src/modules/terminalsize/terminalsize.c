@@ -1,8 +1,8 @@
 #include "common/printing.h"
 #include "common/jsonconfig.h"
+#include "common/stringUtils.h"
 #include "detection/terminalsize/terminalsize.h"
 #include "modules/terminalsize/terminalsize.h"
-#include "util/stringUtils.h"
 
 #define FF_TERMINALSIZE_DISPLAY_NAME "Terminal Size"
 
@@ -29,10 +29,10 @@ bool ffPrintTerminalSize(FFTerminalSizeOptions* options)
     else
     {
         FF_PRINT_FORMAT_CHECKED(FF_TERMINALSIZE_DISPLAY_NAME, 0, &options->moduleArgs, FF_PRINT_TYPE_DEFAULT, ((FFformatarg[]){
-            FF_FORMAT_ARG(result.rows, "rows"),
-            FF_FORMAT_ARG(result.columns, "columns"),
-            FF_FORMAT_ARG(result.width, "width"),
-            FF_FORMAT_ARG(result.height, "height"),
+            FF_ARG(result.rows, "rows"),
+            FF_ARG(result.columns, "columns"),
+            FF_ARG(result.width, "width"),
+            FF_ARG(result.height, "height"),
         }));
     }
     return true;

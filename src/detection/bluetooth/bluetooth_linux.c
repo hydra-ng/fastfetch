@@ -1,9 +1,9 @@
 #include "bluetooth.h"
-#include "util/stringUtils.h"
+#include "common/stringUtils.h"
 
 #ifdef FF_HAVE_DBUS
 #include "common/dbus.h"
-#include "common/io/io.h"
+#include "common/io.h"
 
 /* Example dbus reply, striped to only the relevant parts:
 array [                                                     //root
@@ -191,7 +191,7 @@ static void detectBluetoothRoot(FFlist* devices, FFDBusData* dbus, DBusMessageIt
 
 static const char* detectBluetooth(FFlist* devices, int32_t connectedCount)
 {
-    FFDBusData dbus;
+    FF_DBUS_AUTO_DESTROY_DATA FFDBusData dbus = {};
     const char* error = ffDBusLoadData(DBUS_BUS_SYSTEM, &dbus);
     if(error)
         return error;

@@ -1,8 +1,8 @@
 #include "common/printing.h"
 #include "common/jsonconfig.h"
+#include "common/stringUtils.h"
 #include "detection/initsystem/initsystem.h"
 #include "modules/initsystem/initsystem.h"
-#include "util/stringUtils.h"
 
 #define FF_INITSYSTEM_DISPLAY_NAME "Init System"
 
@@ -36,10 +36,10 @@ bool ffPrintInitSystem(FFInitSystemOptions* options)
     else
     {
         FF_PRINT_FORMAT_CHECKED(FF_INITSYSTEM_DISPLAY_NAME, 0, &options->moduleArgs, FF_PRINT_TYPE_DEFAULT, ((FFformatarg[]) {
-            FF_FORMAT_ARG(result.name, "name"),
-            FF_FORMAT_ARG(result.exe, "exe"),
-            FF_FORMAT_ARG(result.version, "version"),
-            FF_FORMAT_ARG(result.pid, "pid"),
+            FF_ARG(result.name, "name"),
+            FF_ARG(result.exe, "exe"),
+            FF_ARG(result.version, "version"),
+            FF_ARG(result.pid, "pid"),
         }));
     }
     success = true;

@@ -1,23 +1,16 @@
 #include "logo/logo.h"
-#include "common/io/io.h"
+#include "common/io.h"
 #include "common/printing.h"
 #include "common/processing.h"
+#include "common/textModifier.h"
+#include "common/stringUtils.h"
 #include "detection/media/media.h"
 #include "detection/os/os.h"
 #include "detection/terminalshell/terminalshell.h"
-#include "util/textModifier.h"
-#include "util/stringUtils.h"
 
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-
-typedef enum __attribute__((__packed__)) FFLogoSize
-{
-    FF_LOGO_SIZE_UNKNOWN,
-    FF_LOGO_SIZE_NORMAL,
-    FF_LOGO_SIZE_SMALL,
-} FFLogoSize;
 
 static bool ffLogoPrintCharsRaw(const char* data, size_t length, bool printError)
 {
@@ -314,10 +307,10 @@ void ffLogoPrintChars(const char* data, bool doColorReplacement)
 static void logoApplyColors(const FFlogo* logo, bool replacement)
 {
     if(instance.config.display.colorTitle.length == 0)
-        ffStrbufAppendS(&instance.config.display.colorTitle, logo->colorTitle ? logo->colorTitle : logo->colors[0]);
+        ffStrbufAppendS(&instance.config.display.colorTitle, logo->colorTitle ?: logo->colors[0]);
 
     if(instance.config.display.colorKeys.length == 0)
-        ffStrbufAppendS(&instance.config.display.colorKeys, logo->colorKeys ? logo->colorKeys : logo->colors[1]);
+        ffStrbufAppendS(&instance.config.display.colorKeys, logo->colorKeys ?: logo->colors[1]);
 
     if (replacement)
     {
@@ -431,7 +424,8 @@ static void logoPrintStruct(const FFlogo* logo)
 
 static void logoPrintNone(void)
 {
-    logoApplyColors(logoGetBuiltinDetected(FF_LOGO_SIZE_NORMAL), false);
+    if (!instance.config.display.pipe)
+        logoApplyColors(logoGetBuiltinDetected(FF_LOGO_SIZE_NORMAL), false);
     instance.state.logoHeight = 0;
     instance.state.logoWidth = 0;
 }
@@ -451,7 +445,7 @@ static bool logoPrintBuiltinIfExists(const FFstrbuf* name, FFLogoSize size)
         return true;
     }
 
-    const FFlogo* logo = ffStrbufEqualS(name, "?") ? &ffLogoUnknown : logoGetBuiltin(name, size);
+    const FFlogo* logo = ffLogoGetBuiltinForName(name, size);
     if(logo == NULL)
         return false;
 
@@ -494,7 +488,7 @@ static bool updateLogoPath(void)
         return true;
     }
 
-    FF_STRBUF_AUTO_DESTROY fullPath = ffStrbufCreate();
+    FF_STRBUF_AUTO_DESTROY fullPath = ffStrbufCreateA(128);
     if (ffPathExpandEnv(options->source.chars, &fullPath) && ffPathExists(fullPath.chars, FF_PATHTYPE_FILE))
     {
         ffStrbufDestroy(&options->source);
@@ -621,16 +615,6 @@ static bool logoTryKnownType(void)
 
 void ffLogoPrint(void)
 {
-    //When generate JSON result, we don't have a logo or padding.
-    //We also don't need to set main color, because it won't be printed anyway.
-    //So we can return quickly here.
-    if(instance.state.resultDoc)
-    {
-        instance.state.logoHeight = 0;
-        instance.state.logoWidth = 0;
-        return;
-    }
-
     const FFOptionsLogo* options = &instance.config.logo;
 
     if (options->type == FF_LOGO_TYPE_NONE)
@@ -718,7 +702,7 @@ void ffLogoPrintLine(void)
         printf("\033[%uC", instance.state.logoWidth);
 
     if (instance.state.dynamicInterval > 0)
-        fputs("\033[K", stdout);
+        fputs("\033[K", stdout); // Clear to the end of the line
 
     ++instance.state.keysHeight;
 }
@@ -783,4 +767,14 @@ void ffLogoBuiltinListAutocompletion(void)
         for(const FFlogo* logo = ffLogoBuiltins[ch]; *logo->names; ++logo)
             printf("%s\n", logo->names[0]);
     }
+}
+
+const FFlogo* ffLogoGetBuiltinForName(const FFstrbuf* name, FFLogoSize size)
+{
+    return ffStrbufEqualS(name, "?") ? &ffLogoUnknown : logoGetBuiltin(name, size);
+}
+
+const FFlogo* ffLogoGetBuiltinDetected(FFLogoSize size)
+{
+    return logoGetBuiltinDetected(size);
 }

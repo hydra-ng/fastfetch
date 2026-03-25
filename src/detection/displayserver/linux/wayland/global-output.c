@@ -1,7 +1,7 @@
 #ifdef FF_HAVE_WAYLAND
 
 #include "wayland.h"
-#include "util/stringUtils.h"
+#include "common/stringUtils.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
 static void waylandOutputModeListener(void* data, FF_MAYBE_UNUSED struct wl_output* output, uint32_t flags, int32_t width, int32_t height, int32_t refreshRate)
@@ -25,7 +25,7 @@ static void waylandOutputModeListener(void* data, FF_MAYBE_UNUSED struct wl_outp
 static void waylandOutputScaleListener(void* data, FF_MAYBE_UNUSED struct wl_output* output, int32_t scale)
 {
     WaylandDisplay* display = data;
-    display->scale = scale;
+    display->dpi = 96 * (uint32_t) scale;
 }
 
 static void waylandOutputGeometryListener(void *data,
@@ -51,7 +51,7 @@ static void handleXdgLogicalSize(void *data, FF_MAYBE_UNUSED struct zxdg_output_
     // Seems the values are only useful when ractional scale is enabled
     if (width < display->width)
     {
-        display->scale = (double) display->width / width;
+        display->dpi = (uint32_t) (display->width * 96 / width);
     }
 }
 
@@ -86,7 +86,6 @@ const char* ffWaylandHandleGlobalOutput(WaylandData* wldata, struct wl_registry*
 
     WaylandDisplay display = {
         .parent = wldata,
-        .scale = 1,
         .transform = WL_OUTPUT_TRANSFORM_NORMAL,
         .type = FF_DISPLAY_TYPE_UNKNOWN,
         .name = ffStrbufCreate(),
@@ -128,8 +127,7 @@ const char* ffWaylandHandleGlobalOutput(WaylandData* wldata, struct wl_registry*
         (uint32_t) display.width,
         (uint32_t) display.height,
         display.refreshRate / 1000.0,
-        (uint32_t) (display.width / display.scale + .5),
-        (uint32_t) (display.height / display.scale + .5),
+        display.dpi,
         (uint32_t) display.preferredWidth,
         (uint32_t) display.preferredHeight,
         display.preferredRefreshRate / 1000.0,

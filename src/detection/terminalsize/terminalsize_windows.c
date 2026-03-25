@@ -1,5 +1,5 @@
 #include "terminalsize.h"
-#include "common/io/io.h"
+#include "common/io.h"
 
 #include <windows.h>
 
@@ -33,8 +33,8 @@ bool ffDetectTerminalSize(FFTerminalSizeResult* result)
         return false;
 
     {
-        CONSOLE_FONT_INFO cfi;
-        if(GetCurrentConsoleFont(hOutput, FALSE, &cfi)) // Only works for ConHost
+        CONSOLE_FONT_INFOEX cfi;
+        if(GetCurrentConsoleFontEx(hOutput, FALSE, &cfi)) // Only works for ConHost
         {
             result->width = result->columns * (uint16_t) cfi.dwFontSize.X;
             result->height = result->rows * (uint16_t) cfi.dwFontSize.Y;

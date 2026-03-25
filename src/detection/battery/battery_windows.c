@@ -1,17 +1,16 @@
 #include "battery.h"
 
-#include "common/io/io.h"
-#include "util/windows/nt.h"
-#include "util/windows/unicode.h"
-#include "util/mallocHelper.h"
-#include "util/smbiosHelper.h"
+#include "common/io.h"
+#include "common/windows/nt.h"
+#include "common/windows/unicode.h"
+#include "common/mallocHelper.h"
+#include "common/smbiosHelper.h"
 
 #undef WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <batclass.h>
 #include <devguid.h>
 #include <cfgmgr32.h>
-#include <winternl.h>
 
 static const char* detectWithCmApi(FFBatteryOptions* options, FFlist* results)
 {

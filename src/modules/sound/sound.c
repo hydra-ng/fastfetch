@@ -1,9 +1,9 @@
 #include "common/percent.h"
 #include "common/printing.h"
 #include "common/jsonconfig.h"
+#include "common/stringUtils.h"
 #include "detection/sound/sound.h"
 #include "modules/sound/sound.h"
-#include "util/stringUtils.h"
 
 static void printDevice(FFSoundOptions* options, const FFSoundDevice* device, uint8_t index)
 {
@@ -56,12 +56,12 @@ static void printDevice(FFSoundOptions* options, const FFSoundDevice* device, ui
         }
 
         FF_PRINT_FORMAT_CHECKED(FF_SOUND_MODULE_NAME, index, &options->moduleArgs, FF_PRINT_TYPE_DEFAULT, ((FFformatarg[]) {
-            FF_FORMAT_ARG(device->main, "is-main"),
-            FF_FORMAT_ARG(device->name, "name"),
-            FF_FORMAT_ARG(percentageNum, "volume-percentage"),
-            FF_FORMAT_ARG(device->identifier, "identifier"),
-            FF_FORMAT_ARG(percentageBar, "volume-percentage-bar"),
-            FF_FORMAT_ARG(device->platformApi, "platform-api"),
+            FF_ARG(device->main, "is-main"),
+            FF_ARG(device->name, "name"),
+            FF_ARG(percentageNum, "volume-percentage"),
+            FF_ARG(device->identifier, "identifier"),
+            FF_ARG(percentageBar, "volume-percentage-bar"),
+            FF_ARG(device->platformApi, "platform-api"),
         }));
     }
 }

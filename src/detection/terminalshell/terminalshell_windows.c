@@ -1,42 +1,50 @@
 #include "terminalshell.h"
-#include "common/io/io.h"
+#include "common/io.h"
 #include "common/processing.h"
 #include "common/thread.h"
-#include "util/mallocHelper.h"
-#include "util/windows/registry.h"
-#include "util/windows/unicode.h"
-#include "util/windows/version.h"
-#include "util/stringUtils.h"
+#include "common/mallocHelper.h"
+#include "common/windows/registry.h"
+#include "common/windows/unicode.h"
+#include "common/windows/version.h"
+#include "common/windows/nt.h"
+#include "common/stringUtils.h"
 
+#include <stdalign.h>
 #include <windows.h>
 #include <wchar.h>
 #include <tlhelp32.h>
+#include <ntstatus.h>
+#include <winternl.h>
+#include <shlobj.h>
 
 bool fftsGetShellVersion(FFstrbuf* exe, const char* exeName, FFstrbuf* version);
 
 static uint32_t getShellInfo(FFShellResult* result, uint32_t pid)
 {
     uint32_t ppid = 0;
+    bool gui = false;
 
-    while (pid != 0 && ffProcessGetInfoWindows(pid, &ppid, &result->processName, &result->exe, &result->exeName, &result->exePath, NULL))
+    while (pid != 0 && ffProcessGetInfoWindows(pid, &ppid, &result->processName, &result->exe, &result->exeName, &result->exePath, &gui))
     {
         ffStrbufSet(&result->prettyName, &result->processName);
-        if(ffStrbufEndsWithIgnCaseS(&result->prettyName, ".exe"))
+        if (ffStrbufEndsWithIgnCaseS(&result->prettyName, ".exe"))
             ffStrbufSubstrBefore(&result->prettyName, result->prettyName.length - 4);
 
         //Common programs that are between terminal and own process, but are not the shell
-        if(
+        if (
+            !gui && (
             ffStrbufIgnCaseEqualS(&result->prettyName, "sudo")          ||
             ffStrbufIgnCaseEqualS(&result->prettyName, "su")            ||
             ffStrbufIgnCaseEqualS(&result->prettyName, "gdb")           ||
             ffStrbufIgnCaseEqualS(&result->prettyName, "lldb")          ||
+            ffStrbufIgnCaseEqualS(&result->prettyName, "lldb-dap")      ||
             ffStrbufIgnCaseEqualS(&result->prettyName, "python")        || // python on windows generates shim executables
             ffStrbufIgnCaseEqualS(&result->prettyName, "fastfetch")     || // scoop warps the real binaries with a "shim" exe
             ffStrbufIgnCaseEqualS(&result->prettyName, "flashfetch")    ||
             ffStrbufContainIgnCaseS(&result->prettyName, "debug")       ||
             ffStrbufContainIgnCaseS(&result->prettyName, "time")        ||
-            ffStrbufStartsWithIgnCaseS(&result->prettyName, "ConEmu") // https://github.com/fastfetch-cli/fastfetch/issues/488#issuecomment-1619982014
-        ) {
+            ffStrbufStartsWithIgnCaseS(&result->prettyName, "ConEmuC") // https://github.com/fastfetch-cli/fastfetch/issues/488#issuecomment-1619982014
+        )) {
             ffStrbufClear(&result->processName);
             ffStrbufClear(&result->prettyName);
             ffStrbufClear(&result->exe);
@@ -46,13 +54,18 @@ static uint32_t getShellInfo(FFShellResult* result, uint32_t pid)
         }
 
         result->pid = pid;
-        result->ppid = ppid;
 
-        if(ffStrbufIgnCaseEqualS(&result->prettyName, "explorer"))
+        if (gui)
         {
-            ffStrbufSetS(&result->prettyName, "Windows Explorer"); // Started without shell
+            // Started without shell
             // In this case, terminal process will be created by fastfetch itself.
             ppid = 0;
+            if (ffStrbufIgnCaseEqualS(&result->prettyName, "explorer"))
+                ffStrbufSetS(&result->prettyName, "Windows Explorer");
+        }
+        else
+        {
+            result->ppid = ppid;
         }
 
         break;
@@ -85,9 +98,11 @@ static void setShellInfoDetails(FFShellResult* result)
                 {
                     if(wcsncmp(module.szModule, L"clink_dll_", strlen("clink_dll_")) == 0)
                     {
-                        ffStrbufAppendS(&result->prettyName, " (with Clink ");
-                        ffGetFileVersion(module.szExePath, NULL, &result->prettyName);
-                        ffStrbufAppendC(&result->prettyName, ')');
+                        FF_STRBUF_AUTO_DESTROY clinkVersion = ffStrbufCreate();
+                        if (ffGetFileVersion(module.szExePath, NULL, &clinkVersion))
+                            ffStrbufAppendF(&result->prettyName, " (with Clink %s)", clinkVersion.chars);
+                        else
+                            ffStrbufAppendS(&result->prettyName, " (with Clink)");
                         break;
                     }
                 }
@@ -176,7 +191,7 @@ static bool detectDefaultTerminal(FFTerminalResult* result)
             goto conhost;
         }
 
-        FF_HKEY_AUTO_DESTROY hKey = NULL;
+        FF_AUTO_CLOSE_FD HANDLE hKey = NULL;
         if(ffRegOpenKeyForRead(HKEY_LOCAL_MACHINE, regPath, &hKey, NULL))
         {
             FF_STRBUF_AUTO_DESTROY path = ffStrbufCreate();
@@ -186,17 +201,29 @@ static bool detectDefaultTerminal(FFTerminalResult* result)
                 {
                     ffStrbufSetS(&result->processName, "WindowsTerminal.exe");
                     ffStrbufSetS(&result->prettyName, "WindowsTerminal");
-                    ffStrbufSetF(&result->exe, "%s\\WindowsApps\\%s\\WindowsTerminal.exe", getenv("ProgramFiles"), path.chars);
-                    if(ffPathExists(result->exe.chars, FF_PATHTYPE_FILE))
+
+                    PWSTR programFiles = NULL;
+                    if (SUCCEEDED(SHGetKnownFolderPath(&FOLDERID_ProgramFiles, KF_FLAG_DEFAULT, NULL, &programFiles)))
                     {
-                        result->exeName = result->exe.chars + ffStrbufLastIndexC(&result->exe, '\\') + 1;
-                        ffStrbufSet(&result->exePath, &result->exe);
-                    }
-                    else
-                    {
-                        ffStrbufDestroy(&result->exe);
-                        ffStrbufInitMove(&result->exe, &path);
-                        result->exeName = "";
+                        ffStrbufSetWS(&result->exe, programFiles);
+                        CoTaskMemFree(programFiles);
+                        programFiles = NULL;
+
+                        ffStrbufAppendS(&result->exe, "\\WindowsApps\\");
+                        ffStrbufAppend(&result->exe, &path);
+                        ffStrbufAppendS(&result->exe, "\\WindowsTerminal.exe");
+
+                        if(ffPathExists(result->exe.chars, FF_PATHTYPE_FILE))
+                        {
+                            result->exeName = result->exe.chars + ffStrbufLastIndexC(&result->exe, '\\') + 1;
+                            ffStrbufSet(&result->exePath, &result->exe);
+                        }
+                        else
+                        {
+                            ffStrbufDestroy(&result->exe);
+                            ffStrbufInitMove(&result->exe, &path);
+                            result->exeName = "";
+                        }
                     }
                     return true;
                 }
@@ -204,14 +231,19 @@ static bool detectDefaultTerminal(FFTerminalResult* result)
         }
     }
 
-conhost:
-    ffStrbufSetF(&result->exe, "%s\\System32\\conhost.exe", getenv("SystemRoot"));
-    if(ffPathExists(result->exe.chars, FF_PATHTYPE_FILE))
+conhost:;
+    ULONG_PTR conhostPid = 0;
+    ULONG size;
+    if(NT_SUCCESS(NtQueryInformationProcess(NtCurrentProcess(), ProcessConsoleHostProcess, &conhostPid, sizeof(conhostPid), &size)) && conhostPid != 0)
     {
-        ffStrbufSetS(&result->processName, "conhost.exe");
-        ffStrbufSetS(&result->prettyName, "conhost");
-        result->exeName = result->exe.chars + ffStrbufLastIndexC(&result->exe, '\\') + 1;
-        return true;
+        // For Windows Terminal, it reports the PID of OpenConsole
+        if(ffProcessGetInfoWindows((uint32_t) conhostPid, NULL, &result->processName, &result->exe, &result->exeName, &result->exePath, NULL))
+        {
+            ffStrbufSet(&result->prettyName, &result->processName);
+            if(ffStrbufEndsWithIgnCaseS(&result->prettyName, ".exe"))
+                ffStrbufSubstrBefore(&result->prettyName, result->prettyName.length - 4);
+            return true;
+        }
     }
 
     ffStrbufClear(&result->exe);
@@ -228,11 +260,11 @@ static uint32_t getTerminalInfo(FFTerminalResult* result, uint32_t pid)
     }
 
     uint32_t ppid = 0;
-    bool hasGui;
+    bool gui;
 
-    while (pid != 0 && ffProcessGetInfoWindows(pid, &ppid, &result->processName, &result->exe, &result->exeName, &result->exePath, &hasGui))
+    while (pid != 0 && ffProcessGetInfoWindows(pid, &ppid, &result->processName, &result->exe, &result->exeName, &result->exePath, &gui))
     {
-        if(!hasGui || ffStrbufIgnCaseEqualS(&result->processName, "far.exe")) // Far includes GUI objects...
+        if (!gui)
         {
             //We are in nested shell
             ffStrbufClear(&result->processName);

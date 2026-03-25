@@ -1,8 +1,8 @@
 #include "common/printing.h"
 #include "common/jsonconfig.h"
+#include "common/stringUtils.h"
 #include "detection/lm/lm.h"
 #include "modules/lm/lm.h"
-#include "util/stringUtils.h"
 
 bool ffPrintLM(FFLMOptions* options)
 {
@@ -38,9 +38,9 @@ bool ffPrintLM(FFLMOptions* options)
     else
     {
         FF_PRINT_FORMAT_CHECKED(FF_LM_MODULE_NAME, 0, &options->moduleArgs, FF_PRINT_TYPE_DEFAULT, ((FFformatarg[]){
-            FF_FORMAT_ARG(result.service, "service"),
-            FF_FORMAT_ARG(result.type, "type"),
-            FF_FORMAT_ARG(result.version, "version"),
+            FF_ARG(result.service, "service"),
+            FF_ARG(result.type, "type"),
+            FF_ARG(result.version, "version"),
         }));
     }
     success = true;

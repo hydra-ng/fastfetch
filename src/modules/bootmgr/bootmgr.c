@@ -1,8 +1,8 @@
 #include "common/printing.h"
 #include "common/jsonconfig.h"
+#include "common/stringUtils.h"
 #include "detection/bootmgr/bootmgr.h"
 #include "modules/bootmgr/bootmgr.h"
-#include "util/stringUtils.h"
 
 bool ffPrintBootmgr(FFBootmgrOptions* options)
 {
@@ -40,11 +40,11 @@ bool ffPrintBootmgr(FFBootmgrOptions* options)
         else
         {
             FF_PRINT_FORMAT_CHECKED(FF_BOOTMGR_MODULE_NAME, 0, &options->moduleArgs, FF_PRINT_TYPE_DEFAULT, ((FFformatarg[]) {
-                FF_FORMAT_ARG(bootmgr.name, "name"),
-                FF_FORMAT_ARG(bootmgr.firmware, "firmware-path"),
-                FF_FORMAT_ARG(firmwareName, "firmware-name"),
-                FF_FORMAT_ARG(bootmgr.secureBoot, "secure-boot"),
-                FF_FORMAT_ARG(bootmgr.order, "order"),
+                FF_ARG(bootmgr.name, "name"),
+                FF_ARG(bootmgr.firmware, "firmware-path"),
+                FF_ARG(firmwareName, "firmware-name"),
+                FF_ARG(bootmgr.secureBoot, "secure-boot"),
+                FF_ARG(bootmgr.order, "order"),
             }));
         }
     }

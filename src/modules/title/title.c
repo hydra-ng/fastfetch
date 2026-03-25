@@ -1,7 +1,7 @@
 #include "common/printing.h"
 #include "common/jsonconfig.h"
+#include "common/textModifier.h"
 #include "modules/title/title.h"
-#include "util/textModifier.h"
 
 static void appendText(FFstrbuf* output, const FFstrbuf* text, const FFstrbuf* color)
 {
@@ -54,16 +54,39 @@ bool ffPrintTitle(FFTitleOptions* options)
     }
     else
     {
+        FF_STRBUF_AUTO_DESTROY cwdTilde = ffStrbufCreate();
+        if (
+            #if _WIN32
+                ffStrbufStartsWithIgnCase
+            #else
+                ffStrbufStartsWith
+            #endif
+            (&instance.state.platform.cwd, &instance.state.platform.homeDir))
+        {
+            ffStrbufAppendS(&cwdTilde, "~/");
+            ffStrbufAppendNS(&cwdTilde, instance.state.platform.cwd.length - instance.state.platform.homeDir.length, &instance.state.platform.cwd.chars[instance.state.platform.homeDir.length]);
+        }
+        else
+            ffStrbufSet(&cwdTilde, &instance.state.platform.cwd);
+        if (cwdTilde.length > 1) ffStrbufTrimRight(&cwdTilde, '/');
+
         FF_PRINT_FORMAT_CHECKED(FF_TITLE_MODULE_NAME, 0, &options->moduleArgs, FF_PRINT_TYPE_DEFAULT, ((FFformatarg[]){
-            FF_FORMAT_ARG(instance.state.platform.userName, "user-name"),
-            FF_FORMAT_ARG(hostName, "host-name"),
-            FF_FORMAT_ARG(instance.state.platform.homeDir, "home-dir"),
-            FF_FORMAT_ARG(instance.state.platform.exePath, "exe-path"),
-            FF_FORMAT_ARG(instance.state.platform.userShell, "user-shell"),
-            FF_FORMAT_ARG(userNameColored, "user-name-colored"),
-            FF_FORMAT_ARG(atColored, "at-symbol-colored"),
-            FF_FORMAT_ARG(hostNameColored, "host-name-colored"),
-            FF_FORMAT_ARG(instance.state.platform.fullUserName, "full-user-name"),
+            FF_ARG(instance.state.platform.userName, "user-name"),
+            FF_ARG(hostName, "host-name"),
+            FF_ARG(instance.state.platform.homeDir, "home-dir"),
+            FF_ARG(instance.state.platform.exePath, "exe-path"),
+            FF_ARG(instance.state.platform.userShell, "user-shell"),
+            FF_ARG(userNameColored, "user-name-colored"),
+            FF_ARG(atColored, "at-symbol-colored"),
+            FF_ARG(hostNameColored, "host-name-colored"),
+            FF_ARG(instance.state.platform.fullUserName, "full-user-name"),
+            #ifndef _WIN32
+            FF_ARG(instance.state.platform.uid, "user-id"),
+            #else
+            FF_ARG(instance.state.platform.sid, "user-id"),
+            #endif
+            FF_ARG(instance.state.platform.pid, "pid"),
+            FF_ARG(cwdTilde, "cwd"),
         }));
     }
 
@@ -121,12 +144,19 @@ void ffGenerateTitleJsonConfig(FFTitleOptions* options, yyjson_mut_doc* doc, yyj
 bool ffGenerateTitleJsonResult(FF_MAYBE_UNUSED FFTitleOptions* options, yyjson_mut_doc* doc, yyjson_mut_val* module)
 {
     yyjson_mut_val* obj = yyjson_mut_obj_add_obj(doc, module, "result");
+    #ifdef _WIN32
+    yyjson_mut_obj_add_strbuf(doc, obj, "userId", &instance.state.platform.sid);
+    #else
+    yyjson_mut_obj_add_uint(doc, obj, "userId", instance.state.platform.uid);
+    #endif
     yyjson_mut_obj_add_strbuf(doc, obj, "userName", &instance.state.platform.userName);
     yyjson_mut_obj_add_strbuf(doc, obj, "fullUserName", &instance.state.platform.fullUserName);
     yyjson_mut_obj_add_strbuf(doc, obj, "hostName", &instance.state.platform.hostName);
     yyjson_mut_obj_add_strbuf(doc, obj, "homeDir", &instance.state.platform.homeDir);
     yyjson_mut_obj_add_strbuf(doc, obj, "exePath", &instance.state.platform.exePath);
     yyjson_mut_obj_add_strbuf(doc, obj, "userShell", &instance.state.platform.userShell);
+    yyjson_mut_obj_add_uint(doc, obj, "pid", instance.state.platform.pid);
+    yyjson_mut_obj_add_strbuf(doc, obj, "cwd", &instance.state.platform.cwd);
 
     return true;
 }
@@ -169,5 +199,8 @@ FFModuleBaseInfo ffTitleModuleInfo = {
         {"@ symbol (colored)", "at-symbol-colored"},
         {"Host name (colored)", "host-name-colored"},
         {"Full user name", "full-user-name"},
+        {"UID (*nix) / SID (Windows)", "user-id"},
+        {"PID of current process", "pid"},
+        {"CWD with home dir replaced by `~`", "cwd"},
     }))
 };

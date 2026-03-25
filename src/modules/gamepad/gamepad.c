@@ -1,9 +1,9 @@
 #include "common/percent.h"
 #include "common/printing.h"
 #include "common/jsonconfig.h"
+#include "common/stringUtils.h"
 #include "detection/gamepad/gamepad.h"
 #include "modules/gamepad/gamepad.h"
-#include "util/stringUtils.h"
 
 static void printDevice(FFGamepadOptions* options, const FFGamepadDevice* device, uint8_t index)
 {
@@ -42,10 +42,10 @@ static void printDevice(FFGamepadOptions* options, const FFGamepadDevice* device
             ffPercentAppendBar(&percentageBar, device->battery, options->percent, &options->moduleArgs);
 
         FF_PRINT_FORMAT_CHECKED(FF_GAMEPAD_MODULE_NAME, index, &options->moduleArgs, FF_PRINT_TYPE_DEFAULT, ((FFformatarg[]) {
-            FF_FORMAT_ARG(device->name, "name"),
-            FF_FORMAT_ARG(device->serial, "serial"),
-            FF_FORMAT_ARG(percentageNum, "battery-percentage"),
-            FF_FORMAT_ARG(percentageBar, "battery-percentage-bar"),
+            FF_ARG(device->name, "name"),
+            FF_ARG(device->serial, "serial"),
+            FF_ARG(percentageNum, "battery-percentage"),
+            FF_ARG(percentageBar, "battery-percentage-bar"),
         }));
     }
 }

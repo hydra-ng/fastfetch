@@ -1,9 +1,9 @@
 #include "common/printing.h"
 #include "common/jsonconfig.h"
+#include "common/stringUtils.h"
 #include "detection/opencl/opencl.h"
 #include "detection/gpu/gpu.h"
 #include "modules/opencl/opencl.h"
-#include "util/stringUtils.h"
 
 bool ffPrintOpenCL(FFOpenCLOptions* options)
 {
@@ -23,9 +23,9 @@ bool ffPrintOpenCL(FFOpenCLOptions* options)
     else
     {
         FF_PRINT_FORMAT_CHECKED(FF_OPENCL_MODULE_NAME, 0, &options->moduleArgs, FF_PRINT_TYPE_DEFAULT, ((FFformatarg[]) {
-            FF_FORMAT_ARG(result->version, "version"),
-            FF_FORMAT_ARG(result->name, "name"),
-            FF_FORMAT_ARG(result->vendor, "vendor"),
+            FF_ARG(result->version, "version"),
+            FF_ARG(result->name, "name"),
+            FF_ARG(result->vendor, "vendor"),
         }));
     }
 

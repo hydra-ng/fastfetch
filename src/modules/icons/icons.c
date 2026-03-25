@@ -1,8 +1,8 @@
 #include "common/printing.h"
 #include "common/jsonconfig.h"
+#include "common/stringUtils.h"
 #include "detection/icons/icons.h"
 #include "modules/icons/icons.h"
-#include "util/stringUtils.h"
 
 bool ffPrintIcons(FFIconsOptions* options)
 {
@@ -35,8 +35,8 @@ bool ffPrintIcons(FFIconsOptions* options)
     else
     {
         FF_PRINT_FORMAT_CHECKED(FF_ICONS_MODULE_NAME, 0, &options->moduleArgs, FF_PRINT_TYPE_DEFAULT, ((FFformatarg[]){
-            FF_FORMAT_ARG(result.icons1, "icons1"),
-            FF_FORMAT_ARG(result.icons2, "icons2"),
+            FF_ARG(result.icons1, "icons1"),
+            FF_ARG(result.icons2, "icons2"),
         }));
     }
     success = true;

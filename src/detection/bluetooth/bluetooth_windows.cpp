@@ -2,19 +2,9 @@ extern "C"
 {
 #include "bluetooth.h"
 }
-#include "util/windows/wmi.hpp"
-#include "util/windows/unicode.hpp"
-
-STDAPI InitVariantFromStringArray(_In_reads_(cElems) PCWSTR *prgsz, _In_ ULONG cElems, _Out_ VARIANT *pvar);
-
-template <typename Fn>
-struct on_scope_exit {
-    on_scope_exit(Fn &&fn): _fn(std::move(fn)) {}
-    ~on_scope_exit() { this->_fn(); }
-
-private:
-    Fn _fn;
-};
+#include "common/windows/wmi.hpp"
+#include "common/windows/unicode.hpp"
+#include "common/windows/util.hpp"
 
 extern "C"
 const char* ffBluetoothDetectBattery(FFlist* devices)
@@ -35,13 +25,7 @@ const char* ffBluetoothDetectBattery(FFlist* devices)
         if (FAILED(pnpEntityClass->GetMethod(bstr_t(L"GetDeviceProperties"), 0, &pInParams, NULL)))
             return "Failed to get GetDeviceProperties method";
 
-        VARIANT devicePropertyKeys;
-        PCWSTR props[] = { L"{104EA319-6EE2-4701-BD47-8DDBF425BBE5} 2", L"DEVPKEY_Bluetooth_DeviceAddress" };
-
-        if (FAILED(InitVariantFromStringArray(props, ARRAY_SIZE(props), &devicePropertyKeys)))
-            return "Failed to init variant from string array";
-        on_scope_exit releaseDevicePropertyKeys([&] { VariantClear(&devicePropertyKeys); });
-
+        FFWmiVariant devicePropertyKeys({ L"{104EA319-6EE2-4701-BD47-8DDBF425BBE5} 2", L"DEVPKEY_Bluetooth_DeviceAddress" });
         if (FAILED(pInParams->Put(L"devicePropertyKeys", 0, &devicePropertyKeys, CIM_FLAG_ARRAY | CIM_STRING)))
             return "Failed to put devicePropertyKeys";
     }
@@ -87,8 +71,7 @@ const char* ffBluetoothDetectBattery(FFlist* devices)
                 batt = data.get<uint8_t>();
             else
             {
-                FF_STRBUF_AUTO_DESTROY addr; // MAC address without colon
-                ffStrbufInitWSV(&addr, data.get<std::wstring_view>());
+                FF_STRBUF_AUTO_DESTROY addr = ffStrbufCreateWSV(data.get<std::wstring_view>()); // MAC address without colon
                 if (__builtin_expect(addr.length != 12, 0))
                     continue;
 

@@ -1,9 +1,9 @@
 #include "common/printing.h"
 #include "common/jsonconfig.h"
+#include "common/stringUtils.h"
 #include "detection/libc/libc.h"
 #include "detection/camera/camera.h"
 #include "modules/camera/camera.h"
-#include "util/stringUtils.h"
 
 static void printDevice(FFCameraOptions* options, const FFCameraResult* device, uint8_t index)
 {
@@ -26,12 +26,12 @@ static void printDevice(FFCameraOptions* options, const FFCameraResult* device, 
     else
     {
         FF_PRINT_FORMAT_CHECKED(FF_CAMERA_MODULE_NAME, index, &options->moduleArgs, FF_PRINT_TYPE_DEFAULT, (((FFformatarg[]) {
-            FF_FORMAT_ARG(device->name, "name"),
-            FF_FORMAT_ARG(device->vendor, "vendor"),
-            FF_FORMAT_ARG(device->colorspace, "colorspace"),
-            FF_FORMAT_ARG(device->id, "id"),
-            FF_FORMAT_ARG(device->width, "width"),
-            FF_FORMAT_ARG(device->height, "height"),
+            FF_ARG(device->name, "name"),
+            FF_ARG(device->vendor, "vendor"),
+            FF_ARG(device->colorspace, "colorspace"),
+            FF_ARG(device->id, "id"),
+            FF_ARG(device->width, "width"),
+            FF_ARG(device->height, "height"),
         })));
     }
 }

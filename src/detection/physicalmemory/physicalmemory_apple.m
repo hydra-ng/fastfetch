@@ -1,7 +1,8 @@
 #include "physicalmemory.h"
 #include "common/processing.h"
-#include "util/smbiosHelper.h"
-#include "util/stringUtils.h"
+#include "common/smbiosHelper.h"
+#include "common/stringUtils.h"
+#include "common/apple/cf_helpers.h"
 
 #import <Foundation/Foundation.h>
 
@@ -31,6 +32,7 @@ static void appendDevice(
     device->size = 0;
     device->maxSpeed = 0;
     device->runningSpeed = 0;
+    device->installed = true;
     device->ecc = ecc;
 
     if (size)
@@ -60,11 +62,10 @@ static void appendDevice(
             case 'G': device->maxSpeed *= 1000; break;
             case 'K': device->maxSpeed /= 1000; break;
         }
-        device->runningSpeed = device->maxSpeed;
     }
 }
 
-const char* ffDetectPhysicalMemory(FFlist* result)
+static const char* detectFromSystemProfiler(FFlist* result)
 {
     FF_STRBUF_AUTO_DESTROY buffer = ffStrbufCreate();
     if (ffProcessAppendStdOut(&buffer, (char* const[]) {
@@ -118,4 +119,45 @@ const char* ffDetectPhysicalMemory(FFlist* result)
     }
 
     return NULL;
+}
+
+FF_MAYBE_UNUSED static const char* detectFromIokit(FFlist* result)
+{
+    FF_IOOBJECT_AUTO_RELEASE io_registry_entry_t entryDevice = IORegistryEntryFromPath(MACH_PORT_NULL, "IODeviceTree:/chosen");
+    if (!entryDevice)
+        return "IORegistryEntryFromPath() failed";
+
+    FF_CFTYPE_AUTO_RELEASE CFTypeRef dramType = IORegistryEntryCreateCFProperty(entryDevice, CFSTR("dram-type"), kCFAllocatorDefault, 0);
+    FF_CFTYPE_AUTO_RELEASE CFTypeRef dramSize = IORegistryEntryCreateCFProperty(entryDevice, CFSTR("dram-size"), kCFAllocatorDefault, 0);
+    FF_CFTYPE_AUTO_RELEASE CFTypeRef dramVendor = IORegistryEntryCreateCFProperty(entryDevice, CFSTR("dram-vendor"), kCFAllocatorDefault, 0);
+    if (!dramType || !dramSize || !dramVendor)
+        return "IORegistryEntryCreateCFProperty() failed";
+
+    FFPhysicalMemoryResult* device = ffListAdd(result);
+    ffStrbufInit(&device->type);
+    ffStrbufInit(&device->formFactor);
+    ffStrbufInit(&device->locator);
+    ffStrbufInit(&device->vendor);
+    ffStrbufInit(&device->serial);
+    ffStrbufInit(&device->partNumber);
+    device->size = 0;
+    device->maxSpeed = 0;
+    device->runningSpeed = 0;
+    device->installed = true;
+    device->ecc = false;
+
+    ffCfStrGetString(dramType, &device->type);
+    ffCfStrGetString(dramVendor, &device->vendor);
+    ffCfNumGetInt64(dramSize, (int64_t*) &device->size);
+    return NULL;
+}
+
+const char* ffDetectPhysicalMemory(FFlist* result)
+{
+    #if __aarch64__
+    if (detectFromIokit(result) == NULL)
+        return NULL;
+    #endif
+
+    return detectFromSystemProfiler(result);
 }

@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install codespell
         shell: bash
@@ -32,7 +32,7 @@ jobs:
       contents: read
     steps:
       - name: checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: uname -a
         run: uname -a
@@ -78,7 +78,7 @@ jobs:
       ffversion: ${{ steps.ffversion.outputs.ffversion }}
     steps:
       - name: checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: uname -a
         run: uname -a
@@ -93,16 +93,16 @@ jobs:
         run: sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
 
       - name: install required packages
-        run: sudo apt-get update && sudo apt-get install -y gcc-13 g++-13 libvulkan-dev libwayland-dev libxrandr-dev libxcb-randr0-dev libdconf-dev libdbus-1-dev libmagickcore-dev libsqlite3-dev librpm-dev libegl-dev libglx-dev ocl-icd-opencl-dev libpulse-dev libdrm-dev libelf-dev libddcutil-dev libchafa-dev directx-headers-dev rpm ninja-build
+        run: sudo apt-get update && sudo apt-get install -y gcc-13 g++-13 libvulkan-dev libwayland-dev libxrandr-dev libxcb-randr0-dev libdconf-dev libdbus-1-dev libmagickcore-dev libsqlite3-dev librpm-dev libegl-dev libglx-dev ocl-icd-opencl-dev libpulse-dev libdrm-dev libelf-dev libddcutil-dev directx-headers-dev rpm ninja-build
 
       - name: install linuxbrew packages
         run: |
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          /home/linuxbrew/.linuxbrew/bin/brew install imagemagick --ignore-dependencies
+          /home/linuxbrew/.linuxbrew/bin/brew install imagemagick chafa --ignore-dependencies
 
       - name: Initialize CodeQL
         if: matrix.arch == 'amd64'
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: c
 
@@ -114,7 +114,7 @@ jobs:
 
       - name: perform CodeQL analysis
         if: matrix.arch == 'amd64'
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
 
       - name: list features
         run: ./fastfetch --list-features
@@ -151,7 +151,7 @@ jobs:
           cpack -V
 
       - name: upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fastfetch-linux-${{ matrix.arch }}
           path: ./fastfetch-*.*
@@ -164,7 +164,7 @@ jobs:
       contents: read
     steps:
       - name: checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: uname -a
         run: uname -a
@@ -217,7 +217,7 @@ jobs:
         run: ctest --output-on-failure
 
       - name: upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fastfetch-linux-i686
           path: ./fastfetch-*.*
@@ -230,21 +230,21 @@ jobs:
       contents: read
     steps:
       - name: checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: run VM
         uses: uraimo/run-on-arch-action@v3
         id: runcmd
         with:
           arch: armv7
-          distro: ubuntu20.04
+          distro: ubuntu22.04
           githubToken: ${{ github.token }}
           run: |
             uname -a
             apt-get update && apt-get install -y software-properties-common ca-certificates gpg curl
             add-apt-repository -y ppa:ubuntu-toolchain-r/test
             curl -L https://apt.kitware.com/keys/kitware-archive-latest.asc | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
-            echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ focal main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null
+            echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null
             echo -e 'Acquire::https::Verify-Peer "false";\nAcquire::https::Verify-Host "false";' >> /etc/apt/apt.conf.d/99ignore-certificates
             apt-get update && apt-get install -y cmake make gcc-13 libvulkan-dev libwayland-dev libxrandr-dev libxcb-randr0-dev libdconf-dev libdbus-1-dev libmagickcore-dev libsqlite3-dev librpm-dev libegl-dev libglx-dev ocl-icd-opencl-dev libpulse-dev libdrm-dev libelf-dev rpm
             CC=gcc-13 cmake -DSET_TWEAK=Off -DBUILD_TESTS=On -DENABLE_DIRECTX_HEADERS=Off -DCMAKE_INSTALL_PREFIX=/usr .
@@ -257,7 +257,7 @@ jobs:
             ctest --output-on-failure
 
       - name: upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fastfetch-linux-armv7l
           path: ./fastfetch-*.*
@@ -270,7 +270,7 @@ jobs:
       contents: read
     steps:
       - name: checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: run VM
         uses: uraimo/run-on-arch-action@v3
@@ -293,7 +293,7 @@ jobs:
             ctest --output-on-failure
 
       - name: upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fastfetch-linux-armv6l
           path: ./fastfetch-*.*
@@ -312,7 +312,7 @@ jobs:
           - arch: s390x
     steps:
       - name: checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: run VM
         uses: uraimo/run-on-arch-action@v3
@@ -336,7 +336,7 @@ jobs:
             ctest --output-on-failure
 
       - name: upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fastfetch-linux-${{ matrix.arch }}
           path: ./fastfetch-*.*
@@ -345,7 +345,7 @@ jobs:
     name: Musl-amd64
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: setup alpine linux
         uses: jirutka/setup-alpine@master
@@ -374,7 +374,7 @@ jobs:
         shell: alpine.sh {0}
 
       - name: upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fastfetch-musl-amd64
           path: ./fastfetch-*.*
@@ -394,7 +394,7 @@ jobs:
             runs-on: macos-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: uname -a
         run: uname -a
@@ -428,42 +428,80 @@ jobs:
         run: ctest --output-on-failure
 
       - name: upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fastfetch-macos-${{ matrix.arch }}
           path: ./fastfetch-*.*
 
-  sunos-amd64:
+  omnios-amd64:
     runs-on: ubuntu-latest
-    name: SunOS-amd64
+    name: OmniOS-amd64
     steps:
       - name: checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: run VM
         uses: vmactions/omnios-vm@v1
         with:
           usesh: true
+          envs: 'CMAKE_BUILD_TYPE'
           prepare: |
             uname -a
             pkg update --accept
-            pkg install gcc14 cmake git pkg-config glib2 dbus sqlite-3 imagemagick
+            pkg install gcc14 cmake git pkg-config glib2 dbus sqlite-3 imagemagick ninja
 
           run: |
-            cmake -DSET_TWEAK=Off -DBUILD_TESTS=On .
-            cmake --build . --target package --verbose -j4
+            cmake -DSET_TWEAK=Off -DBUILD_TESTS=On -GNinja .
+            cmake --build . --verbose -j4
             ./fastfetch --list-features
             time ./fastfetch -c presets/ci.jsonc --stat false
             time ./fastfetch -c presets/ci.jsonc --format json
             time ./flashfetch
             ldd fastfetch
             ctest --output-on-failure
-            cpack
+            echo 'set(CPACK_PACKAGE_FILE_NAME "fastfetch-omnios-amd64")' >> CPackConfig.cmake
+            cpack -V
 
       - name: upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: fastfetch-sunos-amd64
+          name: fastfetch-omnios-amd64
+          path: ./fastfetch-*.*
+
+  solaris-amd64:
+    runs-on: ubuntu-latest
+    name: Solaris-amd64
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+
+      - name: run VM
+        uses: vmactions/solaris-vm@v1
+        with:
+          usesh: true
+          envs: 'CMAKE_BUILD_TYPE'
+          release: "11.4-gcc-14"
+          prepare: |
+            uname -a
+            pkg install cmake git pkg-config glib2 dbus sqlite-3 imagemagick ninja dconf mesa
+
+          run: |
+            export PKG_CONFIG_PATH=/usr/lib/64/pkgconfig
+            cmake -DSET_TWEAK=Off -DBUILD_TESTS=On -GNinja .
+            cmake --build . --verbose -j4
+            ./fastfetch --list-features
+            time ./fastfetch -c presets/ci.jsonc --stat false
+            time ./fastfetch -c presets/ci.jsonc --format json
+            time ./flashfetch
+            ldd fastfetch
+            ctest --output-on-failure
+            echo 'set(CPACK_PACKAGE_FILE_NAME "fastfetch-solaris-amd64")' >> CPackConfig.cmake
+            cpack -V
+
+      - name: upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: fastfetch-solaris-amd64
           path: ./fastfetch-*.*
 
   freebsd-amd64:
@@ -474,7 +512,7 @@ jobs:
       contents: read
     steps:
       - name: checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: run VM
         uses: cross-platform-actions/action@master
@@ -483,7 +521,8 @@ jobs:
           architecture: x86-64
           cpu_count: 4
           shell: bash
-          version: '14.3'
+          version: '15.0'
+          environment_variables: 'CMAKE_BUILD_TYPE'
           run: |
             uname -a
             sudo pkg update
@@ -498,7 +537,7 @@ jobs:
             ctest --output-on-failure
 
       - name: upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fastfetch-freebsd-amd64
           path: ./fastfetch-*.*
@@ -511,7 +550,7 @@ jobs:
       contents: read
     steps:
       - name: checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: run VM
         uses: cross-platform-actions/action@master
@@ -520,12 +559,13 @@ jobs:
           architecture: x86-64
           cpu_count: 4
           shell: bash
-          version: '7.7'
+          version: '7.8'
+          environment_variables: 'CMAKE_BUILD_TYPE'
           run: |
             uname -a
             sudo pkg_add -u
-            sudo pkg_add -r llvm-19.1.7p3 cmake git pkgconf wayland vulkan-headers vulkan-loader glib2 dconf dbus sqlite3 imagemagick chafa
-            CC=clang-19 cmake -DSET_TWEAK=Off -DBUILD_TESTS=On -DENABLE_EMBEDDED_PCIIDS=On -DENABLE_EMBEDDED_AMDGPUIDS=On .
+            sudo pkg_add -r llvm-21.1.2p0 cmake git pkgconf wayland vulkan-headers vulkan-loader glib2 dconf dbus sqlite3 imagemagick chafa
+            CC=clang-21 cmake -DSET_TWEAK=Off -DBUILD_TESTS=On -DENABLE_EMBEDDED_PCIIDS=On -DENABLE_EMBEDDED_AMDGPUIDS=On .
             cmake --build . --target package --verbose -j4
             ./fastfetch --list-features
             time ./fastfetch -c presets/ci.jsonc --stat false
@@ -535,7 +575,7 @@ jobs:
             ctest --output-on-failure
 
       - name: upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fastfetch-openbsd-amd64
           path: ./fastfetch-*.*
@@ -548,7 +588,7 @@ jobs:
       contents: read
     steps:
       - name: checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: run VM
         uses: cross-platform-actions/action@master
@@ -558,6 +598,7 @@ jobs:
           cpu_count: 4
           shell: bash
           version: '10.1'
+          environment_variables: 'CMAKE_BUILD_TYPE'
           run: |
             uname -a
             sudo pkgin -y install clang cmake git pkgconf wayland vulkan-headers dconf dbus sqlite3 ImageMagick
@@ -571,7 +612,7 @@ jobs:
             ctest --output-on-failure
 
       - name: upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fastfetch-netbsd-amd64
           path: ./fastfetch-*.*
@@ -584,12 +625,13 @@ jobs:
       contents: read
     steps:
       - name: checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: run VM
         uses: vmactions/dragonflybsd-vm@v1
         with:
           usesh: yes
+          envs: 'CMAKE_BUILD_TYPE'
           prepare: |
             uname -a
             pkg update
@@ -606,7 +648,7 @@ jobs:
             ctest --output-on-failure
 
       - name: upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fastfetch-dragonfly-amd64
           path: ./fastfetch-*.*
@@ -619,7 +661,7 @@ jobs:
       contents: read
     steps:
       - name: checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: run VM
         uses: cross-platform-actions/action@master
@@ -629,6 +671,7 @@ jobs:
           architecture: x86-64
           cpu_count: 4
           shell: bash
+          environment_variables: 'CMAKE_BUILD_TYPE'
           run: |
             uname -a
             pkgman install -y git dbus_devel mesa_devel libelf_devel imagemagick_devel opencl_headers ocl_icd_devel vulkan_devel zlib_devel chafa_devel cmake gcc make pkgconfig python3.10 || pkgman install -y git dbus_devel mesa_devel libelf_devel imagemagick_devel opencl_headers ocl_icd_devel vulkan_devel zlib_devel chafa_devel cmake gcc make pkgconfig python3.10
@@ -641,7 +684,7 @@ jobs:
             ctest --output-on-failure
 
       - name: upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fastfetch-haiku-amd64
           path: ./fastfetch-*.*
@@ -670,7 +713,7 @@ jobs:
         shell: msys2 {0}
     steps:
       - name: checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: setup-msys2
         uses: msys2/setup-msys2@v2
@@ -712,7 +755,7 @@ jobs:
       - if: github.event_name == 'push' && github.repository == 'fastfetch-cli/fastfetch'
         id: upload-unsigned-artifact
         name: upload artifacts for signing
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fastfetch-windows-${{ matrix.arch }}
           path: |
@@ -739,7 +782,7 @@ jobs:
         run: 7z a -t7z -mx9 -bd -y fastfetch-windows-${{ matrix.arch }}.7z LICENSE *.dll fastfetch.exe flashfetch.exe presets
 
       - name: upload true artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fastfetch-windows-${{ matrix.arch }}
           path: ./fastfetch-windows-${{ matrix.arch }}.*
@@ -761,7 +804,8 @@ jobs:
       - openbsd-amd64
       - netbsd-amd64
       - dragonfly-amd64
-      - sunos-amd64
+      - solaris-amd64
+      - omnios-amd64
       - haiku-amd64
       - windows-hosts
     permissions:
@@ -775,7 +819,7 @@ jobs:
 
       - name: download artifacts
         if: needs.linux-hosts.outputs.ffversion != steps.get_version_release.outputs.release
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
 
       - name: create release
         if: needs.linux-hosts.outputs.ffversion != steps.get_version_release.outputs.release

@@ -1,3 +1,132 @@
+# 2.60.0
+
+Changes:
+* The CMake option `ENABLE_WIN7_COMPAT:BOOLEAN` now defaults to `OFF` and will be removed in v2.61.0, effectively dropping support for Windows 7 in the next release.
+    * This follows the Windows 7 deprecation notice introduced in v2.57.0.
+* `wm.detectPlugin` now defaults to `true` (WM)
+
+Features:
+* Adds `{cwd}` for custom title formatting, which displays the current working directory (Title)
+* Adds support for detecting the Zed version (#2200, Editor)
+* Adds support for detecting `moss` packages (Packages, Linux)
+* Adds support for detecting komorebi, FancyWM, and GlazeWM (WM, Windows)
+* Adds support for WM plugin version detection on macOS (WM, macOS)
+* Adds support for retrieving the executable path on OpenBSD (#2195, OpenBSD)
+
+Bugfixes:
+* Fixes a potential segmentation fault caused by dereferencing a negative index (#2198)
+* Fixes `tempSensor` parsing so that it accepts only string values (#2202, CPU)
+* Fixes an issue that unexpectedly caused fewer devices to be reported (Keyboard, Linux)
+* Improves WM detection on LXQt by querying WM settings only when no WM has already been detected (#2199, WM, Linux)
+* Fixes memory leaks in DBus connection handling and in the OpenGL EGL context lifecycle
+* Fixes niri version detection on Fedora (WM, Linux)
+* Includes various internal cleanups and optimizations
+
+Logos:
+* Adds `RengeOS` (#2170)
+* Adds `Emmabuntüs` (#2207)
+* Updates Artix Linux (#2157)
+* Updates Linux Mint (#2186)
+* Renames `Refracted Devuan` to `Refracta`
+* Renames `ExodiaPredator` to `ExodiaOS`
+
+# 2.59.0
+
+Changes:
+* Fastfetch no longer relies on the unreliable environment variables `$USER` or `%USERPROFILE%` to determine the current username (Title)
+    * People who set `$USER` to customize the Fastfetch title should use `{ "type": "title", "format": "your-custom-user-name" }` to achieve the same result.
+* Fastfetch no longer tries to probe inaccessible remote disk drives on Windows (Disk, Windows)
+    * People who have remote drives may use `{ "type": "disk", "hideFolders": "X:\\" }` to ignore problematic ones.
+    * This change removes some ugly hacks from the codebase and matches the behavior on `*nix`.
+
+Features:
+* Adds Oracle Solaris support (#2176, SunOS)
+* Adds UID / SID detection (Title)
+    * In custom format: `{user-id}`
+* Switches to native GPU detection on GNU/Hurd and removes the `libpciaccess` dependency (GPU, Hurd)
+* Improves memory size detection on macOS (Memory, macOS)
+    * Avoids relying on `hw.memsize_usable` by default, which may not be available on older macOS versions
+* Improves Windows disk detection accuracy and performance (Disk, Windows)
+* Adds more ARM CPU parts and removes duplicated cases (CPU, ARM)
+
+Logos:
+* Adds 6-color support to the NixOS logo (including the small variant) (#2180)
+
+# 2.58.0
+
+An early release to fix compatibility issues with KDE Plasma 6.6.
+
+Breaking changes:
+* The `de.slowVersionDetection` option has been removed. Slow version detection is now always enabled, as required on non-FHS-compliant distros (e.g., NixOS). (#2149, DE, Linux)
+
+Features:
+* Adds the `--structure-disabled <modules...>` command-line flag to temporarily disable module structure printing.
+    * For example: `fastfetch --structure-disabled colors` removes the color blocks from the default output.
+* Supports chassis type detection on Linux ARM devices when reported via the device tree (Chassis, Linux)
+* Supports Bedrock Linux version detection (#2155, OS, Linux)
+* Honors the `DBPath` and `RootDir` settings in `pacman.conf` when detecting Pacman packages (#2154, Packages, Linux)
+
+Bugfixes:
+* Fixes a crash issue on KDE Plasma 6.6 (Display, Linux)
+* Fixes the Command module not working with `--dynamic-interval` (#2152, Command)
+* Fixes Quartz Compositor version detection. It now correctly reports the version of `WindowServer` (`SkyLight`) instead of `WindowManager`. (WM, macOS)
+
+Logos:
+* Adds Kiss2
+
+# 2.57.1
+
+Features:
+* Tiny performance improvements (Windows)
+* Improves the reliability of hostname retrieval (Title, Windows)
+
+Bugfixes:
+* Fixes potential compilation issues on Linux (#2142, Linux)
+* Fixes compilation errors on macOS when building with older SDKs (#2140, macOS)
+* Fixes compilation issues when building with `-DENABLE_SYSTEM_YYJSON=ON` (#2143)
+
+Logos:
+* Updates PrismLinux and adds a small variant
+
+# 2.57.0
+
+Deprecation notice:
+* Support for Windows 7 (and 8.x) is deprecated and will be removed in a future release. Extended support for Windows 7 (and 8.1) ended on January 10, 2023. These versions do not officially support ANSI escape codes (running fastfetch on them requires a third-party terminal such as ConEmu). In addition, Windows 7 lacks some APIs used by fastfetch. Fastfetch currently loads these APIs dynamically at runtime to maintain compatibility, but this adds complexity to the codebase and increases the maintenance burden.
+    * A CMake flag `ENABLE_WIN7_COMPAT:BOOLEAN` has been introduced (defaults to `ON` for now). If set to `OFF`, Windows 7 compatibility code is excluded, and the resulting binaries will support only Windows 10 (version 1607 and later) and Windows 11.
+    * The main prebuilt Windows binaries on the Release page (`fastfetch-windows-amd64.*`) are built with `ENABLE_WIN7_COMPAT=OFF`. These are the binaries used by `scoop` and `winget`. Users who need Windows 7 (or 8.x) support can download the `-win7` variant instead.
+    * ~~The `ENABLE_WIN7_COMPAT` CMake option and the `-win7` variant binaries are planned to be removed in 2.60.0~~.
+
+Features:
+* Supports COSMIC DE version detection (DE, Linux)
+* Supports niri version detection (#2121, WM, Linux)
+* Supports cosmic-term version and terminal font detection (Terminal / TerminalFont, Linux)
+* Supports urxvt font detection (TerminalFont, Linux) (#2105)
+* Improves xterm font detection by checking `xterm.vt100.faceName` (TerminalFont, Linux)
+* Supports Secure Boot detection (Bootmgr, macOS)
+* Supports DPI scale factor detection on Windows 7 (Display, Windows)
+* Supports xterm 256-color codes in color configuration
+    * In `display.color`: "`@<color-index>`" (e.g., "`@34`" for color index `34`)
+    * In `*.format` strings: "`#@<color-index>`" (e.g., "`#@34`" for color index `34`)
+* Improves uptime accuracy on Windows 10+ (Uptime, Windows)
+* Adds a new module `Logo` to query built-in logo raw data in JSON output (Logo)
+    * Usage: `fastfetch -s logo -l <logo-name> -j # Supported in JSON format only`
+* Supports shell version detection even if the binary has been deleted (#2136, Shell, Linux)
+* Overall code refinements and optimizations
+
+Bugfixes:
+* Skips local / loopback routes when detecting network interfaces (LocalIP, Linux) (#2127)
+* Fixes CPU speed detection on s390x (CPU, Linux) (#2129)
+* Fixes GPU detection error handling and supports case-insensitive PCI ID parsing (GPU, Windows)
+* Fixes some networking issues and memory leaks (Networking)
+* Fixes `exePath` reporting relative paths on macOS (Shell, macOS)
+
+Logos:
+* Adds openSUSE Tumbleweed braille logo
+* Adds Xinux
+* Renames HydraPWK to NetHydra
+* Fixes colors of deepin and UOS
+* Fixes colors of macOS and variants
+
 # 2.56.1
 
 Features:

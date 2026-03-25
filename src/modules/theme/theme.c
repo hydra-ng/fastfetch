@@ -1,8 +1,8 @@
 #include "common/printing.h"
 #include "common/jsonconfig.h"
+#include "common/stringUtils.h"
 #include "detection/theme/theme.h"
 #include "modules/theme/theme.h"
-#include "util/stringUtils.h"
 
 bool ffPrintTheme(FFThemeOptions* options)
 {
@@ -34,8 +34,8 @@ bool ffPrintTheme(FFThemeOptions* options)
     else
     {
         FF_PRINT_FORMAT_CHECKED(FF_THEME_MODULE_NAME, 0, &options->moduleArgs, FF_PRINT_TYPE_DEFAULT, ((FFformatarg[]){
-            FF_FORMAT_ARG(result.theme1, "theme1"),
-            FF_FORMAT_ARG(result.theme2, "theme2"),
+            FF_ARG(result.theme1, "theme1"),
+            FF_ARG(result.theme2, "theme2"),
         }));
     }
 

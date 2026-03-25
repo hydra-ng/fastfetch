@@ -1,8 +1,8 @@
 #include "common/printing.h"
 #include "common/jsonconfig.h"
+#include "common/stringUtils.h"
 #include "detection/host/host.h"
 #include "modules/host/host.h"
-#include "util/stringUtils.h"
 
 bool ffPrintHost(FFHostOptions* options)
 {
@@ -23,7 +23,7 @@ bool ffPrintHost(FFHostOptions* options)
         goto exit;
     }
 
-    if(host.family.length == 0 && host.name.length == 0)
+    if(host.name.length == 0 && host.family.length == 0)
     {
         ffPrintError(FF_HOST_MODULE_NAME, 0, &options->moduleArgs, FF_PRINT_TYPE_DEFAULT, "neither product_family nor product_name is set by O.E.M.");
         goto exit;
@@ -48,13 +48,13 @@ bool ffPrintHost(FFHostOptions* options)
     else
     {
         FF_PRINT_FORMAT_CHECKED(FF_HOST_MODULE_NAME, 0, &options->moduleArgs, FF_PRINT_TYPE_DEFAULT, ((FFformatarg[]) {
-            FF_FORMAT_ARG(host.family, "family"),
-            FF_FORMAT_ARG(host.name, "name"),
-            FF_FORMAT_ARG(host.version, "version"),
-            FF_FORMAT_ARG(host.sku, "sku"),
-            FF_FORMAT_ARG(host.vendor, "vendor"),
-            FF_FORMAT_ARG(host.serial, "serial"),
-            FF_FORMAT_ARG(host.uuid, "uuid"),
+            FF_ARG(host.family, "family"),
+            FF_ARG(host.name, "name"),
+            FF_ARG(host.version, "version"),
+            FF_ARG(host.sku, "sku"),
+            FF_ARG(host.vendor, "vendor"),
+            FF_ARG(host.serial, "serial"),
+            FF_ARG(host.uuid, "uuid"),
         }));
     }
     success = true;

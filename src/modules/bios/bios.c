@@ -1,8 +1,8 @@
 #include "common/printing.h"
 #include "common/jsonconfig.h"
+#include "common/stringUtils.h"
 #include "detection/bios/bios.h"
 #include "modules/bios/bios.h"
-#include "util/stringUtils.h"
 
 bool ffPrintBios(FFBiosOptions* options)
 {
@@ -43,8 +43,8 @@ bool ffPrintBios(FFBiosOptions* options)
     {
         ffStrbufClear(&key);
         FF_PARSE_FORMAT_STRING_CHECKED(&key, &options->moduleArgs.key, ((FFformatarg[]) {
-            FF_FORMAT_ARG(bios.type, "type"),
-            FF_FORMAT_ARG(options->moduleArgs.keyIcon, "icon"),
+            FF_ARG(bios.type, "type"),
+            FF_ARG(options->moduleArgs.keyIcon, "icon"),
         }));
     }
 
@@ -60,11 +60,11 @@ bool ffPrintBios(FFBiosOptions* options)
     else
     {
         FF_PRINT_FORMAT_CHECKED(key.chars, 0, &options->moduleArgs, FF_PRINT_TYPE_NO_CUSTOM_KEY, ((FFformatarg[]) {
-            FF_FORMAT_ARG(bios.date, "date"),
-            FF_FORMAT_ARG(bios.release, "release"),
-            FF_FORMAT_ARG(bios.vendor, "vendor"),
-            FF_FORMAT_ARG(bios.version, "version"),
-            FF_FORMAT_ARG(bios.type, "type"),
+            FF_ARG(bios.date, "date"),
+            FF_ARG(bios.release, "release"),
+            FF_ARG(bios.vendor, "vendor"),
+            FF_ARG(bios.version, "version"),
+            FF_ARG(bios.type, "type"),
         }));
     }
     success = true;

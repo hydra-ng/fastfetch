@@ -1,10 +1,10 @@
 #include "wifi.h"
 #include "common/dbus.h"
-#include "common/io/io.h"
+#include "common/io.h"
 #include "common/processing.h"
 #include "common/properties.h"
-#include "util/stringUtils.h"
-#include "util/debug.h"
+#include "common/stringUtils.h"
+#include "common/debug.h"
 
 #include <net/if.h>
 
@@ -47,7 +47,7 @@ typedef enum {
 static const char* detectWifiWithNm(FFWifiResult* item, FFstrbuf* buffer)
 {
     FF_DEBUG("Starting NetworkManager wifi detection for interface %s", item->inf.description.chars);
-    FFDBusData dbus;
+    FF_DBUS_AUTO_DESTROY_DATA FFDBusData dbus = {};
     const char* error = ffDBusLoadData(DBUS_BUS_SYSTEM, &dbus);
     if(error)
     {
@@ -254,6 +254,7 @@ static const char* detectWifiWithNm(FFWifiResult* item, FFstrbuf* buffer)
     }
 
     FF_DEBUG("NetworkManager wifi detection completed successfully");
+    dbus.lib->ffdbus_message_unref(reply);
     return NULL;
 }
 #endif // FF_HAVE_DBUS

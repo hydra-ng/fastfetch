@@ -1,19 +1,11 @@
 #include "editor.h"
 #include "common/processing.h"
 #include "common/library.h"
-#include "util/stringUtils.h"
-#include "util/path.h"
-#include "util/binary.h"
+#include "common/stringUtils.h"
+#include "common/path.h"
+#include "common/binary.h"
 
 #include <stdlib.h>
-
-#ifdef _WIN32
-static inline char* realpath(const char* restrict file_name, char* restrict resolved_name)
-{
-    assert(resolved_name != NULL);
-    return _fullpath(resolved_name, file_name, _MAX_PATH);
-}
-#endif
 
 static bool extractNvimVersionFromBinary(const char* str, FF_MAYBE_UNUSED uint32_t len, void* userdata)
 {
@@ -115,7 +107,8 @@ const char* ffDetectEditor(FFEditorResult* result)
         ffStrbufEqualS(&result->exe, "hx") ||
         ffStrbufEqualS(&result->exe, "code") ||
         ffStrbufEqualS(&result->exe, "pluma") ||
-        ffStrbufEqualS(&result->exe, "sublime_text")
+        ffStrbufEqualS(&result->exe, "sublime_text") ||
+        ffStrbufEqualS(&result->exe, "zeditor")
     ) param = "--version";
     else if (
         ffStrbufEqualS(&result->exe, "kak") ||

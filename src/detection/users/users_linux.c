@@ -1,4 +1,4 @@
-#include "common/io/io.h"
+#include "common/io.h"
 #include "common/properties.h"
 #include "fastfetch.h"
 #include "users.h"
@@ -100,7 +100,7 @@ const char* detectBySystemd(FFUsersOptions* options, FFlist* users)
 
     if (options->myselfOnly)
     {
-        ffStrbufAppendUInt(&pathUsers, getuid());
+        ffStrbufAppendUInt(&pathUsers, instance.state.platform.uid);
         detectUserBySystemd(&pathUsers, users);
     }
     else

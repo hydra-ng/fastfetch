@@ -1,8 +1,8 @@
-#include "common/io/io.h"
 #include "fastfetch.h"
+#include "common/io.h"
+#include "common/stringUtils.h"
+#include "common/memrchr.h"
 #include "detection/media/media.h"
-#include "util/stringUtils.h"
-#include "util/unused.h"
 
 #include <string.h>
 
@@ -180,6 +180,7 @@ static bool getBusProperties(FFDBusData* data, const char* busName, FFMediaResul
             ffStrbufClear(&result->album);
             ffStrbufClear(&result->url);
             ffStrbufClear(&result->status);
+            data->lib->ffdbus_message_unref(reply);
             return false;
         }
     }
@@ -261,7 +262,7 @@ static void getBestBus(FFDBusData* data, FFMediaResult* result)
 
 static const char* getMedia(FFMediaResult* result)
 {
-    FFDBusData data;
+    FF_DBUS_AUTO_DESTROY_DATA FFDBusData data = {};
     const char* error = ffDBusLoadData(DBUS_BUS_SESSION, &data);
     if(error != NULL)
         return error;

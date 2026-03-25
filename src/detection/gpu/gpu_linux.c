@@ -2,12 +2,12 @@
 #include "detection/vulkan/vulkan.h"
 #include "detection/cpu/cpu.h"
 #include "detection/gpu/gpu_driver_specific.h"
-#include "common/io/io.h"
+#include "common/io.h"
 #include "common/library.h"
+#include "common/FFstrbuf.h"
+#include "common/stringUtils.h"
+#include "common/mallocHelper.h"
 #include "modules/gpu/option.h"
-#include "util/FFstrbuf.h"
-#include "util/stringUtils.h"
-#include "util/mallocHelper.h"
 
 #include <inttypes.h>
 #include <stdint.h>
@@ -560,7 +560,7 @@ static const char* detectOf(FFlist* gpus, FFstrbuf* buffer, FFstrbuf* drmDir, co
 
     if (!gpu->name.length)
     {
-        ffStrbufSetS(&gpu->name, name ? name : compatible);
+        ffStrbufSetS(&gpu->name, name ?: compatible);
         ffStrbufTrimRightSpace(&gpu->name);
     }
     if (!gpu->vendor.length && name)
@@ -656,10 +656,10 @@ static const char* pciDetectGPUs(const FFGPUOptions* options, FFlist* gpus)
 
 const char* ffDetectGPUImpl(const FFGPUOptions* options, FFlist* gpus)
 {
-    #ifdef FF_HAVE_DIRECTX_HEADERS
-        const char* ffGPUDetectByDirectX(const FFGPUOptions* options, FFlist* gpus);
-        if (ffGPUDetectByDirectX(options, gpus) == NULL)
-            return NULL;
+    #if __x86_64__ || __aarch64__
+    const char* ffGPUDetectWsl2(const FFGPUOptions* options, FFlist* gpus);
+    if (ffGPUDetectWsl2(options, gpus) == NULL)
+        return NULL;
     #endif
 
     if (options->detectionMethod == FF_GPU_DETECTION_METHOD_AUTO)

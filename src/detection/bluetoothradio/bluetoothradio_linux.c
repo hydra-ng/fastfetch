@@ -1,9 +1,9 @@
 #include "bluetoothradio.h"
-#include "util/stringUtils.h"
+#include "common/stringUtils.h"
 
 #ifdef FF_HAVE_DBUS
 #include "common/dbus.h"
-#include "common/io/io.h"
+#include "common/io.h"
 
 /* Example dbus reply:
 array [
@@ -112,7 +112,7 @@ static const char* detectBluetooth(FFlist* devices)
     if(dirp == NULL)
         return "Failed to open /sys/class/bluetooth";
 
-    FFDBusData dbus;
+    FF_DBUS_AUTO_DESTROY_DATA FFDBusData dbus = {};
     const char* error = ffDBusLoadData(DBUS_BUS_SYSTEM, &dbus);
     if(error)
         return error;

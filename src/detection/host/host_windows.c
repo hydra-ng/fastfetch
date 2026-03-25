@@ -1,5 +1,5 @@
 #include "host.h"
-#include "util/smbiosHelper.h"
+#include "common/smbiosHelper.h"
 
 typedef struct FFSmbiosSystemInfo
 {
@@ -72,7 +72,7 @@ const char* ffDetectHost(FFHostResult* host)
         ffCleanUpSmbiosValue(&host->family);
     }
 
-    #if _WIN64 && __x86_64__ // aarch64 also defines _WIN64
+    #if __x86_64__
     ffHostDetectMac(host);
     #endif
 

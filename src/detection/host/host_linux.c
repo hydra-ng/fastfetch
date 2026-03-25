@@ -1,26 +1,17 @@
 #include "host.h"
-#include "common/io/io.h"
+#include "common/io.h"
 #include "common/processing.h"
-#include "util/smbiosHelper.h"
+#include "common/smbiosHelper.h"
 
 #include <stdlib.h>
 
-static void getHostProductName(FFstrbuf* name)
+static bool getHostProductName(FFstrbuf* name)
 {
-    if (ffReadFileBuffer("/sys/firmware/devicetree/base/model", name))
+    if (ffReadFileBuffer("/sys/firmware/devicetree/base/model", name) ||
+        ffReadFileBuffer("/sys/firmware/devicetree/base/banner-name", name))
     {
-        ffStrbufTrimRightSpace(name);
         ffStrbufTrimRight(name, '\0');
-        if(ffIsSmbiosValueSet(name))
-            return;
-    }
-
-    if (ffReadFileBuffer("/sys/firmware/devicetree/base/banner-name", name))
-    {
-        ffStrbufTrimRightSpace(name);
-        ffStrbufTrimRight(name, '\0');
-        if(ffIsSmbiosValueSet(name))
-            return;
+        return true;
     }
 
     if (ffReadFileBuffer("/tmp/sysinfo/model", name))
@@ -28,39 +19,61 @@ static void getHostProductName(FFstrbuf* name)
         ffStrbufTrimRightSpace(name);
         ffStrbufTrimRight(name, '\0');
         if(ffIsSmbiosValueSet(name))
-            return;
+            return true;
     }
 
-    ffStrbufClear(name);
+    return false;
 }
 
-static void getHostSerialNumber(FFstrbuf* serial)
+static bool getHostSerialNumber(FFstrbuf* serial)
 {
-    if (ffReadFileBuffer("/sys/firmware/devicetree/base/serial-number", serial))
+    if (ffReadFileBuffer("/sys/firmware/devicetree/base/smbios/smbios/system/serial", serial) ||
+        ffReadFileBuffer("/sys/firmware/devicetree/base/serial-number", serial))
     {
-        ffStrbufTrimRightSpace(serial);
         ffStrbufTrimRight(serial, '\0');
-        if(ffIsSmbiosValueSet(serial))
-            return;
+        return true;
     }
+    return false;
+}
 
-    ffStrbufClear(serial);
+static bool getHostProductFamily(FFstrbuf* family)
+{
+    if (ffReadFileBuffer("/sys/firmware/devicetree/base/smbios/smbios/system/family", family) ||
+        ffReadFileBuffer("/sys/firmware/devicetree/base/smbios/smbios/system/product", family))
+    {
+        ffStrbufTrimRight(family, '\0');
+        return true;
+    }
+    return false;
+}
+
+static bool getHostVendor(FFstrbuf* vendor)
+{
+    if (ffReadFileBuffer("/sys/firmware/devicetree/base/smbios/smbios/system/manufacturer", vendor))
+    {
+        ffStrbufTrimRight(vendor, '\0');
+        return true;
+    }
+    return false;
 }
 
 const char* ffDetectHost(FFHostResult* host)
 {
-    ffGetSmbiosValue("/sys/devices/virtual/dmi/id/product_family", "/sys/class/dmi/id/product_family", &host->family);
-    if (!ffGetSmbiosValue("/sys/devices/virtual/dmi/id/product_name", "/sys/class/dmi/id/product_name", &host->name))
-        getHostProductName(&host->name);
-    ffGetSmbiosValue("/sys/devices/virtual/dmi/id/product_version", "/sys/class/dmi/id/product_version", &host->version);
-    ffGetSmbiosValue("/sys/devices/virtual/dmi/id/product_sku", "/sys/class/dmi/id/product_sku", &host->sku);
-    if (!ffGetSmbiosValue("/sys/devices/virtual/dmi/id/product_serial", "/sys/class/dmi/id/product_serial", &host->serial))
-        getHostSerialNumber(&host->serial);
-    ffGetSmbiosValue("/sys/devices/virtual/dmi/id/product_uuid", "/sys/class/dmi/id/product_uuid", &host->uuid);
-    if (!ffGetSmbiosValue("/sys/devices/virtual/dmi/id/sys_vendor", "/sys/class/dmi/id/sys_vendor", &host->vendor))
+    // This is a hack for Asahi Linux, whose product_family is empty
+    if (ffGetSmbiosValue("/sys/devices/virtual/dmi/id/product_family", "/sys/class/dmi/id/product_family", &host->family))
     {
-        if (ffStrbufStartsWithS(&host->name, "Apple "))
-            ffStrbufSetStatic(&host->vendor, "Apple Inc.");
+        ffGetSmbiosValue("/sys/devices/virtual/dmi/id/product_name", "/sys/class/dmi/id/product_name", &host->name);
+        ffGetSmbiosValue("/sys/devices/virtual/dmi/id/product_version", "/sys/class/dmi/id/product_version", &host->version);
+        ffGetSmbiosValue("/sys/devices/virtual/dmi/id/product_sku", "/sys/class/dmi/id/product_sku", &host->sku);
+        ffGetSmbiosValue("/sys/devices/virtual/dmi/id/product_serial", "/sys/class/dmi/id/product_serial", &host->serial);
+        ffGetSmbiosValue("/sys/devices/virtual/dmi/id/sys_vendor", "/sys/class/dmi/id/sys_vendor", &host->vendor);
+    }
+    else
+    {
+        getHostProductFamily(&host->family);
+        getHostProductName(&host->name);
+        getHostSerialNumber(&host->serial);
+        getHostVendor(&host->vendor);
     }
 
     #ifdef __x86_64__

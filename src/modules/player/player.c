@@ -1,8 +1,8 @@
 #include "common/printing.h"
 #include "common/jsonconfig.h"
+#include "common/stringUtils.h"
 #include "detection/media/media.h"
 #include "modules/player/player.h"
-#include "util/stringUtils.h"
 
 #include <ctype.h>
 
@@ -73,10 +73,10 @@ bool ffPrintPlayer(FFPlayerOptions* options)
     else
     {
         FF_PRINT_FORMAT_CHECKED(FF_PLAYER_DISPLAY_NAME, 0, &options->moduleArgs, FF_PRINT_TYPE_DEFAULT, ((FFformatarg[]){
-            FF_FORMAT_ARG(playerPretty, "player"),
-            FF_FORMAT_ARG(media->player, "name"),
-            FF_FORMAT_ARG(media->playerId, "id"),
-            FF_FORMAT_ARG(media->url, "url"),
+            FF_ARG(playerPretty, "player"),
+            FF_ARG(media->player, "name"),
+            FF_ARG(media->playerId, "id"),
+            FF_ARG(media->url, "url"),
         }));
     }
 
